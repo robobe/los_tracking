@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "los-tracking"
+version = "0.2.0"
+description = "Timestamped bbox, altitude and attitude to bounded Angle-mode RC guidance"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=9,<10", "bullet-drone"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv.sources]
+bullet-drone = { workspace = true }

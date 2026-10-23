@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="660" viewBox="0 0 960 660" role="img" aria-labelledby="title desc">
+  <title id="title">LOS approach: preserve bearing while apparent target size grows</title>
+  <desc id="desc">A side-view illustration shows two positions of the same drone along one line toward a stationary target. Three camera views show a growing target bbox. Bearing and its rate steer corrections, while qualified TTC supervises whether forward approach should continue.</desc>
+  <defs>
+    <marker id="blue-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10Z" fill="#2563eb"/></marker>
+    <marker id="orange-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10Z" fill="#c2410c"/></marker>
+    <g id="drone" fill="#172554" stroke="#172554" stroke-width="3">
+      <path d="M-28 0 H28 M-18 -5 L18 5 M-18 5 L18 -5"/>
+      <ellipse cx="-27" cy="-5" rx="17" ry="4" fill="#dbeafe"/>
+      <ellipse cx="27" cy="-5" rx="17" ry="4" fill="#dbeafe"/>
+      <rect x="-10" y="-6" width="20" height="12" rx="3"/>
+    </g>
+  </defs>
+  <rect width="960" height="660" rx="16" fill="#f8fafc"/>
+  <g font-family="Arial, Helvetica, sans-serif" fill="#0f172a">
+    <text x="32" y="39" font-size="24" font-weight="700">Two ideas work together during approach</text>
+    <text x="32" y="65" font-size="15" fill="#475569">Conceptual illustration, not a flight trace or a guarantee of contact.</text>
+
+    <rect x="24" y="86" width="912" height="254" rx="12" fill="#fff" stroke="#cbd5e1"/>
+    <text x="44" y="113" font-size="18" font-weight="700" fill="#1d4ed8">1. Preserve the acquired LOS direction</text>
+    <text x="44" y="137" font-size="14" fill="#475569">Side view: two instants of the same drone approaching a stationary target.</text>
+    <path d="M72 298 H884" stroke="#94a3b8" stroke-width="2"/>
+    <path d="M200 165 L820 275" stroke="#2563eb" stroke-width="3" stroke-dasharray="8 5"/>
+    <path d="M200 165 H338 M470 213 H608" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <path d="M270 165 Q270 171 268 177 M540 213 Q540 219 538 225" fill="none" stroke="#2563eb" stroke-width="2"/>
+    <text x="278" y="153" font-size="14" fill="#1d4ed8">same bearing</text>
+    <text x="548" y="201" font-size="14" fill="#1d4ed8">same bearing</text>
+    <path d="M319 184 L405 199" stroke="#2563eb" stroke-width="3" marker-end="url(#blue-arrow)"/>
+    <use href="#drone" transform="translate(200 165)"/>
+    <use href="#drone" transform="translate(470 213)"/>
+    <text x="144" y="207" font-size="14">Earlier position</text>
+    <text x="416" y="254" font-size="14">Later position</text>
+    <rect x="802" y="260" width="36" height="38" rx="4" fill="#ef4444" stroke="#991b1b" stroke-width="2"/>
+    <circle cx="820" cy="275" r="4" fill="#fff"/>
+    <text x="777" y="244" font-size="14">Fixed target</text>
+    <text x="44" y="323" font-size="14" fill="#475569">Elevation error/rate → vertical motion. Azimuth error/rate → roll. Yaw holds the acquired heading.</text>
+
+    <rect x="24" y="356" width="912" height="280" rx="12" fill="#fff" stroke="#cbd5e1"/>
+    <text x="44" y="383" font-size="18" font-weight="700" fill="#9a3412">2. Watch bbox growth to estimate optical TTC</text>
+    <g stroke="#94a3b8" fill="#eff6ff">
+      <rect x="64" y="407" width="180" height="128" rx="8"/>
+      <rect x="304" y="407" width="180" height="128" rx="8"/>
+      <rect x="544" y="407" width="180" height="128" rx="8"/>
+    </g>
+    <g stroke="#93c5fd" stroke-dasharray="3 3">
+      <path d="M154 415 V527 M72 471 H236 M394 415 V527 M312 471 H476 M634 415 V527 M552 471 H716"/>
+    </g>
+    <g fill="#fecaca" stroke="#dc2626" stroke-width="2">
+      <rect x="139" y="456" width="30" height="30"/>
+      <rect x="368" y="445" width="52" height="52"/>
+      <rect x="592" y="429" width="84" height="84"/>
+    </g>
+    <g stroke="#c2410c" stroke-width="3" marker-end="url(#orange-arrow)">
+      <path d="M256 471 H290"/>
+      <path d="M496 471 H530"/>
+    </g>
+    <g text-anchor="middle" font-size="14">
+      <text x="154" y="556">Earlier</text>
+      <text x="394" y="556">Later: bbox grows</text>
+      <text x="634" y="556">Closer: bbox grows faster</text>
+    </g>
+    <text x="751" y="438" font-size="14" font-weight="700">Apparent size:</text>
+    <text x="751" y="460" font-size="14">s = √(width × height)</text>
+    <text x="751" y="492" font-size="14" font-weight="700">Fit q = 1/s over time</text>
+    <text x="751" y="514" font-size="14">TTC = −q / dq/dt</text>
+    <text x="44" y="590" font-size="14" fill="#475569">Qualified TTC + altitude + vertical speed → check whether enough descent remains.</text>
+    <text x="44" y="615" font-size="14" fill="#475569">If descent is infeasible or control stays limited: reduce forward pitch, then recover if persistent.</text>
+  </g>
+</svg>
