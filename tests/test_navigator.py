@@ -337,3 +337,20 @@ def test_invalid_command_horizon_is_rejected_before_mutation(config, horizon):
     with pytest.raises(ValueError):
         nav.update(samples(0), now_s=0.0, enabled=True, command_horizon_s=horizon)
     assert nav.state == State.DISABLED
+
+
+@pytest.mark.parametrize('bbox,edges', [((0,100,20,20),('left',)),((100,0,20,20),('top',)),
+                                      ((620,100,20,20),('right',)),((100,460,20,20),('bottom',)),
+                                      ((310,280,20,20),())])
+def test_processed_image_identity_and_edge_margins(config,bbox,edges):
+    nav=LosNavigator(config)
+    acquire(nav)
+    result=nav.update(samples(35,bbox=bbox),now_s=.35,enabled=True)
+    d=result.diagnostics
+    assert d.processed_image_sequence==35 and d.processed_image_stream_id=='camera'
+    assert d.processed_image_timestamp_s==pytest.approx(.35)
+    assert d.processed_bbox==bbox and d.touched_edges==edges
+    x,y,w,h=bbox
+    assert d.edge_margins_px==(x,y,640-x-w,480-y-h)
+    if edges:
+        assert d.vision_reason=='clipped_target' and result.state==State.RECOVER

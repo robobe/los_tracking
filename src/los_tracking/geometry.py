@@ -89,3 +89,10 @@ class AttitudeHistory:
             return None
         return slerp(left.orientation_xyzw, right.orientation_xyzw,
                      (timestamp_s - left.timestamp_s) / gap)
+
+
+def box_edges(bbox, camera):
+    """Signed left/top/right/bottom clearances in pixels, with contact at zero."""
+    x, y, width, height = bbox
+    margins = (x, y, camera.width_px - x - width, camera.height_px - y - height)
+    return margins, tuple(name for name, margin in zip(('left', 'top', 'right', 'bottom'), margins) if margin <= 0)

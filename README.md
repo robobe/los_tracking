@@ -227,3 +227,12 @@ it validates and wraps the supplied angle. `hold.attitude_at(timestamp_s)`
 provides interpolation from bounded history with no extrapolation. Overrides
 are validated before controller state changes and cannot exceed the profile's
 yaw-rate limit.
+
+### Visual decision diagnostics
+
+Navigation results retain the last processed target's stream/sequence/capture time,
+bbox, signed left/top/right/bottom edge margins (pixels) and touched edge names.
+These fields identify the input associated with rejection/recovery, including
+`clipped_target`; they do not change target acceptance or control outputs. App
+telemetry archives them for exact MCAP frame matching. `box_edges` is the shared
+pure geometry helper used by mission prequalification and navigation diagnostics.

@@ -144,6 +144,12 @@ class Diagnostics:
     attitude_age_s: float | None = None
     vision_reason: str = "not_observed"
     input_rejection: str = ""
+    processed_image_stream_id: str | None = None
+    processed_image_sequence: int | None = None
+    processed_image_timestamp_s: float | None = None
+    processed_bbox: tuple[float, float, float, float] | None = None
+    edge_margins_px: tuple[float, float, float, float] | None = None
+    touched_edges: tuple[str, ...] = ()
     requested_vertical_speed_m_s: float = 0.0
     vertical_reference_m_s: float = 0.0
     requested_roll_rad: float = 0.0

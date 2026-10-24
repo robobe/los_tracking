@@ -44,6 +44,7 @@ class LosNavigator:
         self._ttc = TtcEstimator(t)
         self._control = LosControl(self.config)
         self._pending_target = None
+        self._processed_target = None
         self._heading = self._reference = self._hold_altitude = None
         self._sensors_were_ready = False
         self._visual_usable = False
@@ -125,6 +126,7 @@ class LosNavigator:
         sample = self._pending_target
         if sample is None:
             return
+        self._processed_target = sample
         t = self.config.tuning
         if now - sample.timestamp_s > t.max_image_age_s + TIME_EPSILON:
             self._pending_target = None
@@ -363,7 +365,15 @@ class LosNavigator:
         vertical = self._vertical.at(now) if self._vertical.time is not None else (None, None)
         bearing_valid = (self._visual_usable and self._last_visual_time is not None
                          and now - self._last_visual_time <= t.max_image_age_s + TIME_EPSILON)
+        from .geometry import box_edges
+        image = self._processed_target
+        margins, edges = box_edges(image.bbox, self.config.camera) if image is not None and image.bbox is not None else (None, ())
         diagnostics = Diagnostics(
+            processed_image_stream_id=None if image is None else image.stream_id,
+            processed_image_sequence=None if image is None else image.sequence,
+            processed_image_timestamp_s=None if image is None else image.timestamp_s,
+            processed_bbox=None if image is None else image.bbox,
+            edge_margins_px=margins, touched_edges=edges,
             elevation_rad=angles[0], azimuth_rad=angles[1],
             elevation_rate_rad_s=self._bearing.rates[0] if self._bearing.count >= 2 else None,
             azimuth_rate_rad_s=self._bearing.rates[1] if self._bearing.count >= 2 else None,
