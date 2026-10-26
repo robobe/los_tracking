@@ -53,7 +53,8 @@ def test_profile_rejects_unknown_fields_and_missing_platform_values(tmp_path):
 
 def test_simulation_profile_matches_actual_rc_platform(config):
     profile = NavigatorConfig.from_json(Path(__file__).parents[1] / "examples/bullet_profile.json")
-    assert profile == config
+    assert profile == replace(config, tuning=replace(config.tuning, max_attitude_age_s=0.2,
+                                                      max_alignment_gap_s=0.12))
 
 
 def test_oversized_integer_is_reported_as_value_error():

@@ -99,7 +99,7 @@ at least three barometer samples spanning `vertical_warmup_s`.
 
 | Configuration | Default and limit | Changing it |
 | --- | --- | --- |
-| `max_attitude_age_s` | 0.05 s, `> 0` | Higher tolerates older attitude; lower faults sooner after readiness. |
+| `max_attitude_age_s` | 0.05 s, `> 0`; Bullet MSP profile 0.2 s | Higher tolerates older attitude; lower faults sooner after readiness. |
 | `max_barometer_age_s` | 0.2 s, `> 0` | Higher permits longer prediction from old altitude data; lower faults sooner. |
 | `vertical_warmup_s` | 0.1 s, `> 0` | Higher delays readiness; lower uses less initial history. Three samples remain mandatory. |
 | `acquisition_timeout_s` | 5 s, greater than positive acquisition dwell | Higher allows more warmup/acquisition time; lower reaches timeout sooner. |

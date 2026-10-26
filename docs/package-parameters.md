@@ -123,7 +123,7 @@ when commands are limited.
 | `vertical_warmup_s` | 0.1 s | Minimum barometer sample-history span before readiness; `> 0`. At least three samples are also required. | Higher delays command availability; lower starts sooner with less history. |
 | `bearing_filter_s` | 0.15 s | Bearing-filter time constant; `> 0`. | Higher smooths bearing/rate estimates more but responds slower. Lower reacts faster with more noise sensitivity. |
 | `attitude_history_s` | 0.5 s | Stored attitude-history horizon; positive and at least image-age/alignment-gap settings. | Higher supports older image alignment, subject to the fixed 512-sample capacity. Lower retains less history. |
-| `max_alignment_gap_s` | 0.05 s | Maximum gap between attitudes used for image-time interpolation; positive and no greater than history horizon. | Higher accepts wider interpolation gaps with potentially less accurate alignment. Lower rejects more images. |
+| `max_alignment_gap_s` | 0.05 s | Maximum gap between attitudes used for image-time interpolation; positive and no greater than history horizon. The bundled Bullet MSP profile uses 0.12 s. | Higher accepts wider interpolation gaps with potentially less accurate alignment. Lower rejects more images. |
 
 An exact timestamp match does not need interpolation. The library does not
 extrapolate attitude beyond its stored endpoints. A pending image can wait for
@@ -134,7 +134,7 @@ its right interpolation endpoint, bounded by image freshness.
 | Parameter | Default | Purpose and limits | Increase / decrease |
 | --- | --- | --- | --- |
 | `max_image_age_s` | 0.1 s | Maximum usable image age; positive and no greater than attitude history. Also bounds tracking command validity and accepted-frame gaps. | Higher tolerates more image delay/loss but uses older visual information. Lower causes earlier visual rejection and recovery. |
-| `max_attitude_age_s` | 0.05 s | Maximum latest-attitude age; `> 0`. | Higher tolerates more delay but uses older attitude. Lower causes earlier sensor faults after readiness. |
+| `max_attitude_age_s` | 0.05 s | Maximum latest-attitude age; `> 0`. The bundled Bullet profile uses 0.2 s for measured MSP scheduling gaps and watchdog jitter. | Higher tolerates more delay but uses older attitude. Lower causes earlier sensor faults after readiness. |
 | `max_barometer_age_s` | 0.2 s | Maximum latest-barometer age; `> 0`. | Higher tolerates more delay but relies longer on prediction. Lower causes earlier sensor faults after readiness. |
 | `max_control_gap_s` | 0.1 s | Maximum enabled control-update interval; `> 0`. | Higher tolerates longer scheduling gaps. Lower faults sooner when updates are late. |
 | `command_validity_s` | 0.05 s | Maximum lifetime of each generated command; `> 0`. | Higher permits longer reuse **only if other deadlines allow it**. Lower requires faster replacement. |

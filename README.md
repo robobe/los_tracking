@@ -143,8 +143,10 @@ Defaults start at 7° approach pitch, 15° roll and 30° total tilt; roll/pitch 
 15°/s and 5°/s; climb/descent bounds 3/5.5 m/s; vertical-reference slew 1 m/s².
 Upstream vertical LOS gains expressed per degree are converted to radians.
 Camera age is limited to 0.1 s, attitude 0.05 s, barometer 0.2 s, control gaps 0.1 s,
-and command validity 0.05 s. Acquisition/recovery dwell is 0.1 s, with 5 s/1 s
-timeouts. Current configuration is frozen: construct a new navigator to change limits.
+and command validity 0.05 s. The bundled Bullet profile raises attitude age to
+0.2 s and its interpolation gap to 0.12 s for measured MSP scheduling gaps.
+Acquisition/recovery dwell is 0.1 s, with 5 s/1 s timeouts. Current configuration
+is frozen: construct a new navigator to change limits.
 
 No part of the profile promises braking, stationary hover, obstacle avoidance,
 physical contact or visibility through contact. Level pitch does not stop existing
