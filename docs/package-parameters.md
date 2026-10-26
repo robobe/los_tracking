@@ -63,10 +63,8 @@ centre.
 | Parameter | Default / Bullet value | Purpose and limits | Effect of changing it |
 | --- | --- | --- | --- |
 | `mass_kg` | Bullet: 1 kg | Vehicle mass; `> 0`. Must satisfy `max_thrust_n > mass × gravity`. | Higher configured mass raises gravity-compensation thrust. It must match the vehicle. |
-| `max_thrust_n` | Bullet: 33.953391 N | Maximum collective thrust; greater than level hover thrust. Also defines throttle encoding. | Higher value allows more calculated thrust, but produces a smaller throttle fraction for the same requested newtons. Must match the receiver's thrust model. |
+| `max_thrust_n` | Bullet: 33.953391 N | Maximum collective thrust; greater than level hover thrust. | Higher permits more collective demand. It must match the vehicle. |
 | `gravity_m_s2` | 9.81 m/s² | Gravity used in hover compensation; `> 0`. | Higher value raises calculated hover thrust. Match the physical/simulated environment. |
-| `rc_angle_scale_rad` | 45° | Angle represented by a ±500 PWM offset from 1500. Must be `0 < scale < 90°` and cover roll/pitch limits. | Larger scale produces smaller PWM offsets for the same angle. Must match flight-controller decoding. |
-| `rc_yaw_rate_scale_rad_s` | 2 rad/s | Yaw rate represented by a ±500 PWM offset; positive and at least the yaw-rate limit. | Larger scale produces smaller PWM offsets for the same yaw rate. Must match decoding. |
 | `target_altitude_m` | Bullet: 0 m | Target altitude used by **descent-feasibility supervision**. Any finite value; same altitude datum as the barometer. | Raising it reduces the descent considered necessary, making feasibility easier. Lowering it makes feasibility harder. **It does not directly command a descent or landing.** |
 
 ## 3. Approach, angle and speed limits
@@ -74,8 +72,8 @@ centre.
 | Parameter | Default | Purpose and limits | Increase / decrease |
 | --- | --- | --- | --- |
 | `approach_pitch_rad` | 7° | Forward pitch during tracking, multiplied by `approach_scale`. Positive; cannot exceed pitch or combined-tilt limits. | Higher requests stronger forward tilt and generally faster closing. Lower gives a gentler approach. Zero is currently rejected. |
-| `roll_limit_rad` | 15° | Maximum absolute commanded roll; `0 < limit < 90°`, also within RC scale. | Higher permits stronger lateral correction; lower reaches saturation sooner. |
-| `pitch_limit_rad` | 30° | Maximum absolute commanded pitch; `0 < limit < 90°`, also within RC scale. | Higher permits more pitch when other limits allow it; lower constrains forward tilt. |
+| `roll_limit_rad` | 15° | Maximum absolute commanded roll; `0 < limit < 90°`. | Higher permits stronger lateral correction; lower reaches saturation sooner. |
+| `pitch_limit_rad` | 30° | Maximum absolute commanded pitch; `0 < limit < 90°`. | Higher permits more pitch when other limits allow it; lower constrains forward tilt. |
 | `combined_tilt_limit_rad` | 30° | Overall tilt bound; `0 < limit < 90°`. Also triggers recovery when measured tilt exceeds it. | Higher permits steeper flight and delays over-tilt recovery. Lower restricts roll/pitch combinations and triggers recovery earlier. |
 | `roll_slew_rad_s` | 15°/s | Maximum roll-reference change rate; `> 0`. | Higher gives faster correction; lower gives smoother, slower response. Roll and pitch slew are coupled, so either can slow both. |
 | `pitch_slew_rad_s` | 5°/s | Maximum pitch-reference change rate; `> 0`. | Higher starts/stops the approach faster; lower makes transitions slower, including recovery. |
@@ -294,7 +292,7 @@ Returned fields are observations, not tuning parameters.
 | `state` | `DISABLED`, `ACQUIRE`, `TRACK`, `RECOVER` or `FAULT`. A fault stays latched until reset. |
 | `stage` | `BEARING`, `TTC` or `TERMINAL`; describes TTC supervision. |
 | `reason` | Machine-readable explanation of current navigation behavior or failure. |
-| `command` | Four integer RC channels, or `None` when unavailable. Each channel is in `1000–2000`. |
+| `command` | `ControlDemand`, or `None`: roll/pitch radians, yaw rate rad/s and collective thrust newtons. |
 | `diagnostics` | Estimates, validity flags, rejection reasons, control references and limit indicators. Numeric estimates can remain present after becoming invalid. |
 | `usable` | True when `command is not None`; does not check current time against the deadline. |
 
@@ -302,14 +300,10 @@ Check both command availability and expiry:
 
 ```python
 if result.usable and now_s < result.valid_until_s:
-    roll, pitch, throttle, yaw = result.command.as_tuple()
+    roll_rad, pitch_rad, yaw_rate_rad_s, thrust_n = result.command.as_tuple()
 ```
 
-Channels use **AETR order**: roll, pitch, throttle, yaw. Roll/pitch/yaw are centred
-at 1500. Throttle maps zero-to-maximum thrust onto 1000–2000. Integer rounding
-means arbitrary sub-count reference changes cannot be represented exactly.
-
-The caller owns command transport, arming, flight mode and auxiliary channels.
+The caller owns backend-specific encoding, command transport, arming and flight mode.
 The package does not send packets, infer collision or implement landing.
 
 ## Sources and verification
@@ -319,7 +313,7 @@ Reviewed against:
 - [Package control flow](package-control-flow.md)
 - [Configuration and validation](../src/los_tracking/config.py)
 - [Bullet profile](../examples/bullet_profile.json)
-- [Controller and RC encoding](../src/los_tracking/control.py)
+- [Controller and physical demand](../src/los_tracking/control.py)
 - [Vertical, bearing and TTC estimators](../src/los_tracking/estimation.py)
 - [Navigation lifecycle and supervision](../src/los_tracking/navigator.py)
 - [Geometry and attitude history](../src/los_tracking/geometry.py)
@@ -329,5 +323,5 @@ Reviewed against:
 This is a source-based explanation. No flight simulations or hardware checks
 were performed for this document. Configuration values accepted by validation
 are not necessarily stable or physically achievable. Gains are simulation
-starting points; calibration, vehicle values and RC scales must match the actual
+starting points; calibration and vehicle values must match the actual
 system.

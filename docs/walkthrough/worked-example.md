@@ -33,7 +33,7 @@ assert results[0].reason == "vertical_warmup"
 result = results[-1]
 assert result.state == State.TRACK and result.usable
 if result.usable and now < result.valid_until_s:
-    roll, pitch, throttle, yaw = result.command.as_tuple()
+    roll_rad, pitch_rad, yaw_rate_rad_s, thrust_n = result.command.as_tuple()
 ```
 
 Trace through the entry method:

@@ -1,14 +1,10 @@
-"""Original-LOS outer control and bounded Angle-mode RC conversion, without IO."""
+"""Original-LOS physical-demand control, without firmware or IO."""
 from math import acos, cos, isfinite
 
 from .geometry import clamp, combined_tilt, euler, wrap
-from .types import RcChannels, finite
+from .types import ControlDemand, finite
 
 
-RC_CENTRE = 1500
-RC_HALF_RANGE = 500
-RC_MIN = 1000
-RC_SPAN = 1000
 NUMERICAL_TOLERANCE = 1e-12
 MIN_VERTICAL_PROJECTION = 0.5
 
@@ -29,28 +25,6 @@ def slew_pair(previous, desired, dt, tuning):
     return tuple(old + fraction * (new - old) for old, new in zip(previous, desired))
 
 
-def encode_channels(roll, pitch, thrust, yaw_rate, config):
-    """Round like Bullet's RcCodec, then retract quantization across angle limits.
-
-    Continuous references obey slew exactly. Integer PWM has a one-count
-    resolution error; it cannot express arbitrary sub-count motion per tick.
-    """
-    vehicle, tuning = config.vehicle, config.tuning
-    scale = vehicle.rc_angle_scale_rad
-    roll_channel = round(RC_CENTRE + RC_HALF_RANGE * roll / scale)
-    pitch_channel = round(RC_CENTRE + RC_HALF_RANGE * pitch / scale)
-    decode = lambda channel: (channel - RC_CENTRE) / RC_HALF_RANGE * scale
-    while abs(decode(roll_channel)) > min(tuning.roll_limit_rad, tuning.combined_tilt_limit_rad) + NUMERICAL_TOLERANCE:
-        roll_channel -= 1 if roll_channel > RC_CENTRE else -1
-    while (abs(decode(pitch_channel)) > tuning.pitch_limit_rad + NUMERICAL_TOLERANCE
-           or combined_tilt(decode(roll_channel), decode(pitch_channel)) > tuning.combined_tilt_limit_rad + NUMERICAL_TOLERANCE):
-        pitch_channel -= 1 if pitch_channel > RC_CENTRE else -1
-    yaw_channel = round(RC_CENTRE + RC_HALF_RANGE * yaw_rate / vehicle.rc_yaw_rate_scale_rad_s)
-    while abs((yaw_channel - RC_CENTRE) / RC_HALF_RANGE * vehicle.rc_yaw_rate_scale_rad_s) > tuning.yaw_rate_limit_rad_s + NUMERICAL_TOLERANCE:
-        yaw_channel -= 1 if yaw_channel > RC_CENTRE else -1
-    throttle = round(RC_MIN + RC_SPAN * clamp(thrust / vehicle.max_thrust_n, 0.0, 1.0))
-    channels = RcChannels(roll_channel, pitch_channel, throttle, yaw_channel)
-    return channels, (decode(roll_channel), decode(pitch_channel))
 
 
 class LosControl:
@@ -143,7 +117,8 @@ class LosControl:
                          -t.yaw_rate_limit_rad_s, t.yaw_rate_limit_rad_s)
         if yaw_rate_rad_s is not None:
             yaw_rate = yaw_rate_rad_s
-        command, output_angles = encode_channels(*new_angles, thrust, yaw_rate, self.config)
+        command = ControlDemand(*new_angles, yaw_rate, thrust)
+        output_angles = new_angles
         self.vertical_memory, self.lateral_memory = candidate_z, candidate_r
         self.thrust_integral = candidate_thrust_i
         self.angles, self.vz_reference = new_angles, new_z

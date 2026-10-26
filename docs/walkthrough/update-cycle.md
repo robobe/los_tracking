@@ -235,7 +235,7 @@ approach scale and an over-tilt integral-freeze flag.
 | Elevation/azimuth errors | LOS tracking: elevation → vertical motion, azimuth → roll, scaled approach pitch, heading hold. |
 
 The control method owns feedback gains, integral memory, speed/angle/thrust limits,
-slew, tilt compensation, anti-windup and RC encoding. Its configuration is linked
+slew, tilt compensation, anti-windup and physical-demand output. Its configuration is linked
 in the [control parameter reference](../package-parameters.md#4-controller-gains-and-integral-limits).
 Detailed equations are reserved for the control chapter. An arithmetic failure
 latches `control_numeric_failure` and returns no command.
@@ -261,8 +261,8 @@ it allows longer reuse only when every other deadline permits it; decreasing it
 requires faster replacement. Sensor/state settings can always shorten validity.
 
 Every normal return is a `NavigationResult`; `command` may be `None`.
-`command.as_tuple()` is `(roll, pitch, throttle, yaw)`, with integer channels in
-1000–2000. `usable` only checks command presence. The caller must separately stop
+`command.as_tuple()` is `(roll_rad, pitch_rad, yaw_rate_rad_s, thrust_n)`.
+`usable` only checks command presence. The caller must separately stop
 using previously returned commands at their deadline.
 
 [Back to walkthrough](../approach-walkthrough.md)

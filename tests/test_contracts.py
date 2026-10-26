@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from los_tracking import (AttitudeSample, BarometerSample, CameraCalibration, LosNavigator,
-                          NavigationInput, NavigatorConfig, RcChannels, TargetObservation,
+                          NavigationInput, NavigatorConfig, ControlDemand, TargetObservation,
                           Tuning, VehicleConfig)
 
 
@@ -19,8 +19,8 @@ from los_tracking import (AttitudeSample, BarometerSample, CameraCalibration, Lo
     lambda: TargetObservation("camera", 0, 0, (0, 0, 1, float("inf"))),
     lambda: TargetObservation("camera", 0, 0, 1),
     lambda: NavigationInput(attitude=(0, 0, 0, 1)),
-    lambda: RcChannels(1500, 1500, 999, 1500),
-    lambda: RcChannels(1500, 1500, True, 1500),
+    lambda: ControlDemand(0, 0, 0, -1),
+    lambda: ControlDemand(0, 0, True, 1),
     lambda: CameraCalibration(640, 480, 0, 320, 320, 240),
     lambda: CameraCalibration.from_horizontal_fov(640, 480, pi),
     lambda: CameraCalibration.from_horizontal_fov("640", 480, pi / 2),

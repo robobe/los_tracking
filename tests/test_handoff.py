@@ -60,9 +60,9 @@ def test_public_heading_yaw_override_validation_and_filter_continuity():
     hold.set_heading(2 * pi)
     assert hold.heading_rad == pytest.approx(0.)
     command = hold.command(now_s=1.31, target_altitude_m=20., yaw_rate_rad_s=radians(15))
-    assert command.throttle == base.throttle and command.yaw > 1500
+    assert command.thrust_n == base.thrust_n and command.yaw_rate_rad_s > 0
     assert hold.vertical is prior_vertical and hold.control.thrust_integral == prior_integral
-    assert hold.command(now_s=1.32, target_altitude_m=20.).yaw == 1500
+    assert hold.command(now_s=1.32, target_altitude_m=20.).yaw_rate_rad_s == 0
     assert hold.attitude_at(1.305) is None  # No extrapolation.
     assert hold.attitude_at(1.295) == pytest.approx((0, 0, 0, 1))
     for value in (float('nan'), float('inf'), True, config.tuning.yaw_rate_limit_rad_s + .01):

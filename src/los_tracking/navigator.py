@@ -14,7 +14,7 @@ BEARING_EPSILON_RAD = 1e-12
 
 
 class LosNavigator:
-    """Single-threaded, timestamped bbox/altitude/attitude to four Angle RC channels.
+    """Single-threaded, timestamped bbox/altitude/attitude to physical control demand.
 
     `enabled` is navigation authorization, not arming. A disabled mission or
     latched fault requires reset before another enable. No contact is inferred.

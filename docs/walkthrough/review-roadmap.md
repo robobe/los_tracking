@@ -15,7 +15,7 @@ documented here.
 | 8. Optical TTC | `TtcEstimator.push/at/invalidate` in [estimation.py](../../src/los_tracking/estimation.py) | Why fit reciprocal size, and when is the result qualified? |
 | 9. Approach feasibility | `descent_feasible`, `_stage_and_feasibility` in [estimation.py](../../src/los_tracking/estimation.py) and [navigator.py](../../src/los_tracking/navigator.py) | How much descent is predicted before contact, and how do margins/stages affect supervision? |
 | 10. LOS and hold control | `LosControl.begin_track/step/recover` in [control.py](../../src/los_tracking/control.py) | How do angular error/rate, memory and vertical PI generate references and thrust? |
-| 11. Limits and RC encoding | `limit_angles`, `slew_pair`, `encode_channels` in [control.py](../../src/los_tracking/control.py) | How do total tilt, coordinated slew, saturation and quantization constrain commands? |
+| 11. Limits and demand output | `limit_angles`, `slew_pair`, `ControlDemand` in [control.py](../../src/los_tracking/control.py) | How do total tilt, coordinated slew and saturation constrain physical commands? |
 | 12. Result and expiry | `_result` in [navigator.py](../../src/los_tracking/navigator.py) | How are validity flags, diagnostics and caller-use deadlines constructed? |
 
 [Back to walkthrough](../approach-walkthrough.md)

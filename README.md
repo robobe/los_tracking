@@ -1,7 +1,7 @@
 # LOS tracking
 
 `los_tracking` 0.2 is a pure-Python, stateful **bbox + barometric altitude + attitude
-→ four Angle-mode RC channels** library. It performs an already-airborne approach
+→ physical roll, pitch, yaw-rate and thrust demand** library. It performs an already-airborne approach
 toward one stationary target. It preserves the acquired **world LOS bearing** and
 initial heading, correcting elevation with vertical motion and azimuth with roll.
 Both bearing error and **rotation-compensated LOS rate** enter the control law.
@@ -33,9 +33,9 @@ inputs = NavigationInput(
 now_s = 12.31
 result = navigator.update(inputs, now_s=now_s, enabled=True)
 if result.usable and now_s < result.valid_until_s:
-    roll, pitch, throttle, yaw = result.command.as_tuple()
+    roll_rad, pitch_rad, yaw_rate_rad_s, thrust_n = result.command.as_tuple()
     # The application may apply these only before result.valid_until_s,
-    # in the configured Angle mode. It owns arm/mode/auxiliary channels.
+    # and owns backend-specific encoding, arming and transport.
 
 # No target in a NEW image is explicit:
 no_target = TargetObservation("camera-session", 43, 12.34, None)
@@ -125,22 +125,15 @@ Reacquisition reseeds biases for a continuous handoff. Commanded combined tilt i
 coordinate both slew rates with one interpolation fraction. Measured over-tilt is
 reported separately and freezes thrust integral growth during recovery.
 
-Four integer channels, in **roll, pitch, throttle, yaw** order:
-
-- Roll/pitch: 1500 centre; 1000/2000 encode configured negative/positive angle scales.
-- Throttle: 1000 is zero thrust; 2000 is configured maximum thrust. Hover is vehicle-specific.
-- Yaw: 1500 centre; 1000/2000 encode negative/positive body-Z rate, not heading.
-
-References obey slew bounds exactly. PWM rounding has one-count resolution;
-sub-count reference changes cannot be represented on every tick. RC conversion
-retracts rounding that would cross individual/combined angle or yaw-rate bounds.
-The app must match these scales, add arm/mode/auxiliaries, and reject expired
+`ControlDemand` contains roll/pitch radians, body yaw rate rad/s and collective
+thrust newtons. References obey slew and configured physical limits exactly.
+The app converts this demand for its backend, adds arm/mode policy, and rejects expired
 commands with an independent receiver watchdog. This library opens no transport.
 
 ## Configuration and starting profile
 
 `examples/bullet_profile.json` contains every tuning value for reproducibility.
-Platform fields are explicit: intrinsics and mount, mass, maximum thrust, RC scales,
+Platform fields are explicit: intrinsics and mount, mass, maximum thrust,
 and target altitude in the same barometric datum. Barometric altitude is not AGL.
 The profile uses a 1 kg vehicle and 33.953391 N maximum thrust from the bundled
 Bullet racer, ideal 640×480 / 90° horizontal FOV, and flat target datum 0 m.
@@ -184,7 +177,7 @@ Reference: [navigation guide](https://github.com/mayaboker/fly_smart/blob/main/d
 and [standalone design](https://github.com/mayaboker/fly_smart/blob/main/docs/los/standalone_los_library_design.md),
 source revision `6cce117761b84c78c068185f291527dbb00c5481`. This implementation keeps
 the original-LOS contact behavior but adds altitude-history vertical estimation,
-explicit RC conversion, combined tilt enforcement, sample identity checks and
+an explicit physical command contract, combined tilt enforcement, sample identity checks and
 qualified reciprocal-size TTC. See [implementation plan](docs/implementation-plan.md).
 
 ## Altitude/heading hold and handoff
@@ -192,8 +185,9 @@ qualified reciprocal-size TTC. See [implementation plan](docs/implementation-pla
 `AltitudeHeadingHold(config, max_climb_m_s=1.0)` shares the LOS vertical estimator,
 bounded attitude history and control law. Feed timestamped `NavigationInput`
 sensors through `observe()`, check `ready(now_s)`, then call
-`command(now_s=..., target_altitude_m=...)`. It produces four AETR channels;
-the caller owns arming, mode, transport and all other channels. It consumes no XY
+`command(now_s=..., target_altitude_m=...)`. It produces a `ControlDemand` in
+radians, radians/second and newtons; the caller owns backend conversion, arming
+and transport. It consumes no XY
 position or velocity. `estimate(now_s)` reports filtered altitude/vertical speed.
 
 After hold, use `navigator.reset(handoff=hold.handoff(now_s=...,

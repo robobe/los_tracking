@@ -47,8 +47,6 @@ class VehicleConfig:
     mass_kg: float
     max_thrust_n: float
     gravity_m_s2: float = 9.81
-    rc_angle_scale_rad: float = 45 * DEG_TO_RAD
-    rc_yaw_rate_scale_rad_s: float = 2.0
 
     def __post_init__(self):
         for item in fields(self):
@@ -56,8 +54,6 @@ class VehicleConfig:
                 raise ValueError(f"{item.name} must be positive")
         if self.max_thrust_n <= finite(self.mass_kg * self.gravity_m_s2, "hover_thrust_n"):
             raise ValueError("maximum thrust must exceed level hover thrust")
-        if self.rc_angle_scale_rad >= pi / 2:
-            raise ValueError("RC angle scale must be below pi/2")
 
 
 @dataclass(frozen=True)
@@ -157,11 +153,6 @@ class NavigatorConfig:
         if not isinstance(self.camera, CameraCalibration) or not isinstance(self.vehicle, VehicleConfig) or not isinstance(self.tuning, Tuning):
             raise ValueError("typed camera, vehicle and tuning configuration required")
         finite(self.target_altitude_m, "target_altitude_m")
-        if max(self.tuning.roll_limit_rad, self.tuning.pitch_limit_rad) > self.vehicle.rc_angle_scale_rad:
-            raise ValueError("angle limits exceed RC scale")
-        if self.tuning.yaw_rate_limit_rad_s > self.vehicle.rc_yaw_rate_scale_rad_s:
-            raise ValueError("yaw limit exceeds RC scale")
-
     @classmethod
     def from_json(cls, path: str | Path):
         """Load an explicit profile; unknown fields and malformed data are ValueErrors."""

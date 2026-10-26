@@ -5,7 +5,8 @@ import pytest
 from bullet_drone.commands import RcInput
 from bullet_drone.rc import RcCodec
 from los_tracking import AttitudeSample, CameraCalibration, Tuning
-from los_tracking.control import LosControl, encode_channels, limit_angles, slew_pair
+from los_tracking.control import LosControl, limit_angles, slew_pair
+from bullet_app.rc import encode_channels
 from los_tracking.estimation import BearingEstimator
 from los_tracking.geometry import AttitudeHistory, combined_tilt, rotate, slerp, world_bearing, wrap
 
@@ -123,7 +124,7 @@ def test_los_corrections_memory_and_windup(config):
 def test_heading_rate_and_measured_tilt_compensation(config):
     control = LosControl(config)
     command = control.step(0.01, 10, 0, from_rpy(pitch=0.2, yaw=0.1), 0, hold_altitude=10)
-    assert command.yaw < 1500
+    assert command.yaw_rate_rad_s < 0
     assert control.last_diagnostics["thrust_n"] == pytest.approx(9.81 / cos(0.2))
     assert abs(control.last_diagnostics["output_pitch_rad"]) < 1e-12
 

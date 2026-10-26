@@ -1,3 +1,4 @@
+from bullet_app.rc import encode_demand
 """Sensor-only inputs; hidden plant truth is used solely by fixtures and scoring."""
 from math import hypot, sin
 
@@ -50,7 +51,7 @@ def test_sensor_only_closed_loop_reduces_range_and_preserves_los(config, crosswi
         assert result.state != State.FAULT
         if result.usable:
             # Only the TEST adapter adds arm/mode and the unused auxiliary channels.
-            frame = RcInput(result.command.as_tuple() + (2000, 2000) + (1000,) * 12)
+            frame = RcInput(encode_demand(result.command, config).as_tuple() + (2000, 2000) + (1000,) * 12)
             decoded = codec.decode(frame, "test", i + 1)
             roll += (decoded.rpy[0] - roll) * DT_S / 0.12
             pitch += (decoded.rpy[1] - pitch) * DT_S / 0.12
@@ -112,7 +113,7 @@ def test_pybullet_angle_rc_adapter_and_noisy_barometer_inputs(config):
             result = nav.update(inputs, now_s=now, enabled=True)
             assert result.state != State.FAULT
             tracked += result.state == State.TRACK
-            frame = (RcInput(result.command.as_tuple() + (2000, 2000) + (1000,) * 12)
+            frame = (RcInput(encode_demand(result.command, config).as_tuple() + (2000, 2000) + (1000,) * 12)
                      if result.usable else codec.encode("angle", (0, 0, 0), 9.81, True))
             observation = sim.step(frame)
         assert tracked > 700

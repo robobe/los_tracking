@@ -7,7 +7,7 @@ Source: [navigator.py](../../src/los_tracking/navigator.py), method [`LosNavigat
 
 One call advances navigation by **one control tick**. The method decides whether
 measurements and session state permit control, updates estimates, chooses hold
-or approach behavior, then returns an optional RC command and its deadline.
+or approach behavior, then returns an optional physical control demand and its deadline.
 
 The approach preserves the world LOS direction acquired from the target. Roll
 corrects azimuth error/rate; vertical motion corrects elevation error/rate;
@@ -31,7 +31,7 @@ flowchart TD
     SUP --> SCALE["Scale forward pitch down if limited"]
     SCALE --> PITCH["Forward pitch drives approach"]
     SUP --> REC["Persistent limitation: recover and hold altitude"]
-    ROLL --> RC["Limits, slew and RC command with expiry"]
+    ROLL --> RC["Limits, slew and physical demand with expiry"]
     THR --> RC
     YAW --> RC
     PITCH --> RC

@@ -1,3 +1,4 @@
+from bullet_app.rc import encode_demand
 from dataclasses import replace
 from math import radians
 
@@ -17,7 +18,7 @@ def test_acquisition_needs_vertical_warmup_and_new_visual_samples(config):
     assert result.diagnostics.rate_observable
     assert result.diagnostics.reference_elevation_rad > 0
     assert result.generated_at_s < result.valid_until_s <= result.generated_at_s + 0.05
-    assert len(result.command.as_tuple()) == 4
+    assert len(encode_demand(result.command, config).as_tuple()) == 4
 
 
 def test_duplicate_frame_never_acquires_or_renews_freshness(config):

@@ -5,7 +5,7 @@ Status: implemented and verified. Commit message: `los flow version1`.
 ## Agreed goal and boundary
 Stateful, independent `LosNavigator(config).update(inputs, now_s=..., enabled=...)`
 accepts timestamped bbox, barometric altitude and body-to-world XYZW attitude;
-returns four 1000–2000 Angle-mode channels with expiry, state and diagnostics.
+returns physical roll/pitch/yaw-rate/thrust demand with expiry, state and diagnostics.
 One stationary target; already airborne; original world LOS and heading retained.
 The app owns arming, takeoff, mode, transport, fallback and future collision reporting.
 No inferred horizontal speed/range, acceleration input, live RC transport or automatic contact detection.

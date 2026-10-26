@@ -1,4 +1,4 @@
-# los_tracking package flow: entry method to RC output
+# los_tracking package flow: entry method to physical demand
 
 `los_tracking` guides an already-airborne drone toward a detected target using
 its line of sight (LOS).
@@ -6,7 +6,7 @@ its line of sight (LOS).
 - **Input:** timestamped target bbox, barometer altitude and body-to-world
   attitude, together with camera/vehicle configuration, current time and
   navigation enable state.
-- **Output:** four Angle-mode RC channels—roll, pitch, throttle and yaw—plus
+- **Output:** roll/pitch angle, yaw-rate and collective-thrust demand—plus
   navigation state, diagnostics and a command-validity deadline. The command
   can be unavailable during warmup, disable or fault.
 - **General idea:** align attitude with the image timestamp, convert the bbox
@@ -19,7 +19,7 @@ The caller owns image detection, takeoff, yaw search/centering, arming and
 transport. The package consumes the resulting measurements and returns control
 commands; it does not infer collision or implement landing.
 
-### Approach idea: bearing and TTC to RC commands
+### Approach idea: bearing and TTC to physical commands
 
 At acquisition, save the target's LOS bearing as a reference. During approach,
 compare the current filtered bearing with that reference and use both the
@@ -43,8 +43,8 @@ limited, progressively reduce forward pitch and enter recovery if the problem
 persists. TTC supervises the bearing-based controller; it does not directly
 set throttle or establish that a collision occurred.
 
-Finally, apply angle, speed, thrust and slew limits, then map roll/pitch angles,
-thrust and yaw rate into four integer RC channels in the range **1000–2000**.
+Finally, apply angle, speed, thrust and slew limits and return those physical
+quantities. The application maps them to its selected backend.
 
 ### Visual guide: what the controller is trying to do
 
@@ -54,7 +54,7 @@ flowchart TD
     OBS["BBox centre + image-time attitude"] --> ERR
     ERR --> AZ["Azimuth error and rate: correct roll"]
     ERR --> EL["Elevation error and rate: correct vertical motion"]
-    HEAD["Saved heading: yaw hold"] --> CMD["Bounded RC commands with expiry"]
+    HEAD["Saved heading: yaw hold"] --> CMD["Bounded physical demand with expiry"]
     AZ --> CMD
     EL --> CMD
     GROW["BBox growth history"] --> TTC["Qualified optical TTC"]
@@ -89,11 +89,11 @@ flowchart TD
     BAR --> SUP
     SUP --> PITCH["Scale forward pitch<br/>Recover if limitation persists"]
     HEAD["Saved heading + measured yaw"] --> YAW["Yaw-rate reference"]
-    ROLL --> ENC["Limits, slew and RC encoding"]
+    ROLL --> ENC["Limits, slew and physical demand"]
     THR --> ENC
     PITCH --> ENC
     YAW --> ENC
-    ENC --> RC["RC: roll, pitch, throttle, yaw"]
+    ENC --> RC["roll, pitch, yaw rate, thrust"]
     classDef measured fill:#dbeafe,stroke:#2563eb,color:#172554;
     classDef supervisory fill:#ffedd5,stroke:#c2410c,color:#7c2d12;
     classDef command fill:#dcfce7,stroke:#15803d,color:#14532d;
@@ -135,7 +135,7 @@ flowchart TD
 
 For the default 7° approach pitch, a scale of `1.0` requests 7°, `0.5` requests
 3.5°, and `0.0` requests level pitch. These are requested references; slew and
-tilt limits still apply before the RC command is emitted. TTC unavailability
+tilt limits still apply before the physical demand is emitted. TTC unavailability
 does not disable independent control-authority supervision.
 
 ## 1. Entry method: `LosNavigator.update()`
@@ -192,11 +192,11 @@ result = navigator.update(
 )
 
 if result.usable and 100.0 < result.valid_until_s:
-    roll, pitch, throttle, yaw = result.command.as_tuple()
+    roll_rad, pitch_rad, yaw_rate_rad_s, thrust_n = result.command.as_tuple()
 ```
 
 `enabled=True` authorizes navigation; it does not arm the drone. The caller owns
-arming, Angle-mode selection, all auxiliary RC channels and command transport.
+backend conversion, arming, flight-mode selection and command transport.
 
 Implementation: [navigator.py](../src/los_tracking/navigator.py).
 
@@ -222,7 +222,7 @@ flowchart TD
     B --> M["Advance ACQUIRE / TRACK / RECOVER<br/>Check dwell, limits and deadlines"]
     M -->|Fault| F
     M -->|Control available| C["LosControl.step()<br/>Hold or LOS tracking references"]
-    C --> Q["Apply limits, slew and anti-windup<br/>Encode four Angle RC channels"]
+    C --> Q["Apply limits, slew and anti-windup<br/>Create physical ControlDemand"]
     Q --> O["Build NavigationResult<br/>Bound command validity"]
     F --> N
     D --> O
@@ -358,7 +358,7 @@ stateDiagram-v2
 
 | State | Behavior and output |
 | --- | --- |
-| `DISABLED` | No RC command. Disabled updates do not ingest sensor/target samples. Disabling an active session requires reset before enabling again. |
+| `DISABLED` | No control demand. Disabled updates do not ingest sensor/target samples. Disabling an active session requires reset before enabling again. |
 | `ACQUIRE` | Warm sensors if necessary, then hold altitude/heading with level roll/pitch while qualifying the target. Needs at least three accepted candidate frames spanning the acquisition dwell, and an initialized bearing-rate filter. |
 | `TRACK` | Use acquired LOS reference, current bearing error and LOS rate to generate approach references. |
 | `RECOVER` | Capture current altitude as a recovery hold target, reduce approach references toward hold, and attempt bounded reacquisition. Preserve the acquired LOS reference and held heading. |
@@ -400,7 +400,7 @@ the navigator progressively reduces `approach_scale`. Persistent limitation
 enters recovery. TTC stages do not replace the controller with a separate
 landing or collision controller.
 
-## 8. Control law and RC encoding
+## 8. Control law and physical demand
 
 `LosControl.step()` receives the filtered vertical state, latest measured
 attitude, held heading, timestep and either LOS tracking errors/rates or a hold
@@ -415,17 +415,17 @@ flowchart LR
     V --> Z["Climb/descent limits<br/>Vertical-reference slew"]
     Z --> PI["Vertical-speed PI<br/>Gravity and tilt compensation<br/>Thrust saturation / anti-windup"]
     H["Held heading minus measured yaw"] --> Y["Bounded yaw-rate reference"]
-    T --> RC["encode_channels()"]
+    T --> RC["ControlDemand"]
     PI --> RC
     Y --> RC
-    RC --> O["roll, pitch, throttle, yaw<br/>Integers 1000 to 2000"]
+    RC --> O["roll/pitch rad, yaw rate rad/s<br/>collective thrust N"]
 ```
 
 | Output | How it is determined |
 | --- | --- |
 | Roll | Acquired azimuth error and azimuth rate, with bounded integral memory and a continuity bias. |
 | Pitch | Configured forward approach pitch multiplied by supervision scale; level reference during hold/recovery. |
-| Throttle | Vertical-speed tracking PI plus gravity compensation, corrected for measured roll/pitch tilt and bounded by maximum thrust. |
+| Thrust | Vertical-speed tracking PI plus gravity compensation, corrected for measured roll/pitch tilt and bounded by maximum thrust. |
 | Yaw | Held-heading error converted into bounded body yaw rate. Target horizontal pixel error does not drive navigator yaw. |
 
 Elevation error and elevation rate determine the tracking vertical-speed
@@ -435,10 +435,9 @@ roll/pitch/combined-tilt constraints and anti-windup limit commands before RC
 encoding. `begin_track()` reseeds biases when entering tracking to preserve
 continuity with the preceding control state.
 
-`encode_channels()` maps roll/pitch angle, thrust and yaw rate to integer PWM
-values. Its rounding and angle-limit correction keep quantized commands within
-configured limits. `RcChannels.as_tuple()` returns **AETR order**:
-`(roll, pitch, throttle, yaw)`.
+`ControlDemand.as_tuple()` returns `(roll_rad, pitch_rad, yaw_rate_rad_s,
+thrust_n)`. Backend encoding belongs to the application, so this package is
+independent of internal simulation RC and Betaflight rate/throttle curves.
 
 Implementation: [control.py](../src/los_tracking/control.py).
 
@@ -454,7 +453,7 @@ Every successful update call returns `NavigationResult`:
 | `state` | `DISABLED`, `ACQUIRE`, `TRACK`, `RECOVER` or `FAULT` enum value. |
 | `stage` | `BEARING`, `TTC` or `TERMINAL` enum value. |
 | `reason` | Machine-readable navigation or failure cause. |
-| `command` | Four `RcChannels`, or `None` when no command is available. |
+| `command` | A physical `ControlDemand`, or `None` when no command is available. |
 | `diagnostics` | Bearings/rates and validity flags, reference bearing, vertical state, TTC qualification, input ages/rejections, limits and control output details. |
 | `usable` | Convenience property equivalent to `command is not None`; it does not check the caller's current time. |
 

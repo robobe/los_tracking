@@ -108,18 +108,20 @@ class TrackStage(StrEnum):
 
 
 @dataclass(frozen=True)
-class RcChannels:
-    roll: int
-    pitch: int
-    throttle: int
-    yaw: int
+class ControlDemand:
+    roll_rad: float
+    pitch_rad: float
+    yaw_rate_rad_s: float
+    thrust_n: float
 
     def __post_init__(self):
-        if any(type(v) is not int or not 1000 <= v <= 2000 for v in self.as_tuple()):
-            raise ValueError("RC channels must be integers in 1000..2000")
+        for name in ('roll_rad', 'pitch_rad', 'yaw_rate_rad_s', 'thrust_n'):
+            finite(getattr(self, name), name)
+        if self.thrust_n < 0:
+            raise ValueError('thrust_n must be nonnegative')
 
-    def as_tuple(self) -> tuple[int, int, int, int]:
-        return self.roll, self.pitch, self.throttle, self.yaw
+    def as_tuple(self):
+        return self.roll_rad, self.pitch_rad, self.yaw_rate_rad_s, self.thrust_n
 
 
 @dataclass(frozen=True)
@@ -182,7 +184,7 @@ class NavigationResult:
     state: State
     stage: TrackStage
     reason: str
-    command: RcChannels | None
+    command: ControlDemand | None
     diagnostics: Diagnostics
 
     @property
