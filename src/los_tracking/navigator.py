@@ -126,6 +126,7 @@ class LosNavigator:
         sample = self._pending_target
         if sample is None:
             return
+        previous_processed = self._processed_target
         self._processed_target = sample
         t = self.config.tuning
         if now - sample.timestamp_s > t.max_image_age_s + TIME_EPSILON:
@@ -144,8 +145,12 @@ class LosNavigator:
             return
         attitude = self._attitudes.at(sample.timestamp_s)
         if attitude is None:
-            # A pending exposure may acquire its right interpolation endpoint on
-            # a later tick. An age bound prevents waiting indefinitely.
+            if self._attitudes.samples and sample.timestamp_s > self._attitudes.samples[-1].timestamp_s:
+                # Waiting for a right endpoint must not invalidate a still-fresh
+                # accepted observation; update() enforces its original expiry.
+                self._processed_target = previous_processed
+                self._vision_reason = "attitude_unaligned"
+                return
             self._reject_visual("attitude_unaligned")
             return
         self._pending_target = None

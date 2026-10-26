@@ -157,13 +157,62 @@ def test_capture_alignment_uses_history_and_waits_for_right_endpoint(config):
     # No attitude at or after exposure yet: attitude sample is 0.34.
     inputs = NavigationInput(delayed, BarometerSample("baro", 35, 0.35, 10), None)
     result = nav.update(inputs, now_s=0.35, enabled=True)
-    assert result.state == State.RECOVER
+    assert result.state == State.TRACK
     assert result.diagnostics.vision_reason == "attitude_unaligned"
+    assert result.diagnostics.bearing_valid
+    assert result.diagnostics.processed_image_sequence == 34
+    assert result.diagnostics.image_age_s == pytest.approx(.01)
     # Next attitude brackets the pending exposure; do not require a new image.
     inputs = replace(samples(36, camera=False), target=None)
     result = nav.update(inputs, now_s=0.36, enabled=True)
     assert result.diagnostics.vision_reason == "usable"
     assert result.diagnostics.image_age_s == pytest.approx(0.015)
+    assert result.state == State.TRACK
+
+
+@pytest.mark.parametrize('horizon, expiry', [(0., .45), (.02, .42)])
+def test_waiting_for_alignment_does_not_extend_last_valid_image_lifetime(config, horizon, expiry):
+    nav = LosNavigator(config)
+    acquire(nav)
+    for index in range(35, round(expiry * 100) + 1):
+        now = index / 100
+        # Every new image is ahead of the newest attitude, so none can replace
+        # the last accepted observation at .34 seconds.
+        inputs = replace(samples(index), attitude=samples(index - 1).attitude,
+                         target=TargetObservation('camera', index, now - .005, DEFAULT_BOX))
+        result = nav.update(inputs, now_s=now, enabled=True, command_horizon_s=horizon)
+        if now < expiry:
+            assert result.state == State.TRACK
+            assert result.valid_until_s <= .44 + 1e-9
+    assert result.state == State.RECOVER
+    assert not result.diagnostics.bearing_valid
+    assert result.reason == ('image_deadline' if horizon else 'stale_image')
+
+
+def test_acquisition_and_tracking_survive_images_arriving_before_attitude(config):
+    nav = LosNavigator(config)
+    for index in range(61):
+        now = index / 100
+        inputs = samples(index, camera=False)
+        if index % 2:
+            inputs = replace(inputs, attitude=None,
+                             target=TargetObservation('camera', index, now - .005, DEFAULT_BOX))
+        result = nav.update(inputs, now_s=now, enabled=True, command_horizon_s=.02)
+        if now >= .3:
+            assert result.state == State.TRACK
+            assert result.diagnostics.bearing_valid
+
+
+def test_waiting_image_is_rejected_if_arriving_attitude_leaves_excessive_gap(config):
+    config = replace(config, tuning=replace(config.tuning, max_alignment_gap_s=.005))
+    nav = LosNavigator(config)
+    acquire(nav)
+    pending = TargetObservation('camera', 35, .345, DEFAULT_BOX)
+    result = nav.update(NavigationInput(pending, samples(35).barometer, None), now_s=.35, enabled=True)
+    assert result.state == State.TRACK
+    result = nav.update(samples(36, camera=False), now_s=.36, enabled=True)
+    assert result.state == State.RECOVER
+    assert result.diagnostics.vision_reason == 'attitude_unaligned'
 
 
 def test_acquisition_times_out_without_inputs(config):

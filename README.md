@@ -120,6 +120,11 @@ TTC loss alone neither resets learned correction nor authorizes blind continuati
 Missing/invalid target geometry, clipping, abrupt association shifts, excessive
 LOS deviation or measured over-tilt cause recovery. Persistent angle/vertical/thrust
 limitations or TTC infeasibility moderate pitch first, then enter recovery.
+An image awaiting a newer attitude sample stays pending. Acquisition progress and
+tracking retain the last accepted observation until its original image deadline;
+pending images do not renew freshness or contribute acquisition samples. Missing
+attitude after that deadline still causes recovery. Excessive interpolation gaps
+remain rejected, and no attitude extrapolation is performed.
 Reacquisition reseeds biases for a continuous handoff. Commanded combined tilt is
 `acos(cos(roll)*cos(pitch))`: retain roll when feasible, reduce pitch first, and
 coordinate both slew rates with one interpolation fraction. Measured over-tilt is
@@ -232,3 +237,6 @@ These fields identify the input associated with rejection/recovery, including
 `clipped_target`; they do not change target acceptance or control outputs. App
 telemetry archives them for exact MCAP frame matching. `box_edges` is the shared
 pure geometry helper used by mission prequalification and navigation diagnostics.
+While `vision_reason=attitude_unaligned` awaits a future attitude sample, the
+processed-image fields retain the previous observation. The app's `latest_image`
+diagnostic separately identifies the newest received frame.
