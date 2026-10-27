@@ -11,6 +11,24 @@ from .types import finite, quaternion
 DEG_TO_RAD = pi / 180
 IDENTITY_QUATERNION = (0.0, 0.0, 0.0, 1.0)
 
+YAML_DEGREE_FIELDS = {
+    "approach_pitch_deg": ("approach_pitch_rad", DEG_TO_RAD),
+    "roll_limit_deg": ("roll_limit_rad", DEG_TO_RAD),
+    "pitch_limit_deg": ("pitch_limit_rad", DEG_TO_RAD),
+    "combined_tilt_limit_deg": ("combined_tilt_limit_rad", DEG_TO_RAD),
+    "roll_slew_deg_s": ("roll_slew_rad_s", DEG_TO_RAD),
+    "pitch_slew_deg_s": ("pitch_slew_rad_s", DEG_TO_RAD),
+    "yaw_rate_limit_deg_s": ("yaw_rate_limit_rad_s", DEG_TO_RAD),
+    "elevation_kp_m_s_deg": ("elevation_kp_m_s_rad", 1 / DEG_TO_RAD),
+    "elevation_kd_m_deg": ("elevation_kd_m_rad", 1 / DEG_TO_RAD),
+    "elevation_ki_m_s2_deg": ("elevation_ki_m_s2_rad", 1 / DEG_TO_RAD),
+    "lateral_memory_limit_deg": ("lateral_memory_limit_rad", DEG_TO_RAD),
+    "max_elevation_deg": ("max_elevation_rad", DEG_TO_RAD),
+    "max_azimuth_deg": ("max_azimuth_rad", DEG_TO_RAD),
+    "max_los_deviation_deg": ("max_los_deviation_rad", DEG_TO_RAD),
+    "max_association_jump_deg": ("max_association_jump_rad", DEG_TO_RAD),
+}
+
 
 @dataclass(frozen=True)
 class CameraCalibration:
@@ -168,9 +186,16 @@ class NavigatorConfig:
         try:
             if not isinstance(data, dict) or set(data) - {"camera", "vehicle", "target_altitude_m", "tuning"}:
                 raise ValueError("invalid or unknown navigator profile fields")
+            tuning = dict(data.get("tuning", {}))
+            legacy = set(tuning) & {runtime for runtime, _ in YAML_DEGREE_FIELDS.values()}
+            if legacy:
+                raise ValueError("navigator YAML angles must use degree keys")
+            for yaml_name, (runtime_name, scale) in YAML_DEGREE_FIELDS.items():
+                if yaml_name in tuning:
+                    tuning[runtime_name] = finite(tuning.pop(yaml_name), yaml_name) * scale
             return cls(camera=CameraCalibration(**data["camera"]),
                        vehicle=VehicleConfig(**data["vehicle"]),
                        target_altitude_m=data["target_altitude_m"],
-                       tuning=Tuning(**data.get("tuning", {})))
+                       tuning=Tuning(**tuning))
         except (TypeError, KeyError) as exc:
             raise ValueError("invalid navigator profile") from exc

@@ -1,76 +1,172 @@
-# Reference 640x480 Bullet LOS mission profile. Angles are radians, times seconds.
+# ********************
+# CAMERA CALIBRATION
+# ********************
 camera:
+  # Image width in pixels. Usage: must match the camera publisher.
   width_px: 640
+  # Image height in pixels. Usage: must match the camera publisher.
   height_px: 480
+  # Horizontal focal length in pixels. Usage: use calibrated intrinsics.
   fx_px: 320.00000000000006
+  # Vertical focal length in pixels. Usage: use calibrated intrinsics.
   fy_px: 320.00000000000006
+  # Optical-centre X coordinate in pixels. Usage: use calibrated intrinsics.
   cx_px: 320.0
+  # Optical-centre Y coordinate in pixels. Usage: use calibrated intrinsics.
   cy_px: 240.0
+  # Camera-to-body quaternion [x, y, z, w]. Usage: set only after mount calibration.
   camera_to_body_xyzw: [0.0, 0.0, 0.0, 1.0]
+# ********************
+# VEHICLE LIMITS
+# ********************
 vehicle:
+  # Vehicle mass in kg. Usage: match the physics or real-airframe mass.
   mass_kg: 1.0
+  # Total available thrust in N. Usage: keep above hover thrust.
   max_thrust_n: 33.953391
+  # Gravity magnitude in m/s². Usage: match the operating environment.
   gravity_m_s2: 9.81
+# ********************
+# MISSION TARGET
+# ********************
+# Target barometric altitude in m. Usage: set in the same datum as feedback.
 target_altitude_m: 0.0
+# Runtime uses radians; degree values below are converted during loading.
 tuning:
   # Lateral attitude and yaw limits.
-  approach_pitch_rad: 0.12217304763960307
-  roll_limit_rad: 0.2617993877991494
-  pitch_limit_rad: 0.5235987755982988
-  combined_tilt_limit_rad: 0.5235987755982988
-  roll_slew_rad_s: 0.2617993877991494
-  pitch_slew_rad_s: 0.08726646259971647
+# ********************
+# LATERAL ATTITUDE AND YAW
+# ********************
+  # Forward approach pitch in degrees. Usage: increase carefully for faster closing.
+  approach_pitch_deg: 7
+  # Maximum roll command in degrees. Usage: cap lateral correction authority.
+  roll_limit_deg: 15
+  # Maximum pitch command in degrees. Usage: cap forward command authority.
+  pitch_limit_deg: 30
+  # Maximum combined roll/pitch tilt in degrees. Usage: keep within vehicle safety limits.
+  combined_tilt_limit_deg: 30
+  # Roll-reference slew limit in degrees/s. Usage: lower for smoother lateral response.
+  roll_slew_deg_s: 15
+  # Pitch-reference slew limit in degrees/s. Usage: lower for smoother forward response.
+  pitch_slew_deg_s: 5
+  # Yaw hold proportional gain in 1/s. Usage: raise only until heading correction is prompt.
   yaw_gain_s_inv: 4.0
-  yaw_rate_limit_rad_s: 2.0
+  # Maximum yaw rate in degrees/s. Usage: cap search and hold rotation.
+  yaw_rate_limit_deg_s: 114.591559026
   # Vertical motion and controller gains.
+# ********************
+# VERTICAL MOTION AND CONTROL
+# ********************
+  # Maximum downward speed in m/s. Usage: cap closing descent.
   max_descent_m_s: 5.5
+  # Maximum upward speed in m/s. Usage: cap altitude recovery.
   max_climb_m_s: 3.0
+  # Vertical-speed reference slew in m/s². Usage: lower for gentler thrust changes.
   vertical_slew_m_s2: 1.0
+  # Altitude-hold gain in 1/s. Usage: raise for firmer height hold.
   hold_altitude_gain_s_inv: 1.0
-  elevation_kp_m_s_rad: 40.10704565915762
-  elevation_kd_m_rad: 14.32394487827058
-  elevation_ki_m_s2_rad: 14.32394487827058
+  # LOS elevation proportional gain in (m/s)/degree. Usage: increase descent response to vertical error.
+  elevation_kp_m_s_deg: 0.7
+  # LOS elevation rate gain in m/degree. Usage: increase damping of vertical bearing motion.
+  elevation_kd_m_deg: 0.25
+  # LOS elevation integral gain in (m/s²)/degree. Usage: use sparingly to remove steady error.
+  elevation_ki_m_s2_deg: 0.25
+  # Vertical integral-memory limit in m/s. Usage: cap accumulated descent bias.
   vertical_memory_limit_m_s: 3.0
+  # Azimuth proportional gain. Usage: increase lateral response to target offset.
   azimuth_kp: 0.8
+  # Azimuth rate gain in s. Usage: increase damping of lateral motion.
   azimuth_kd_s: 4.0
+  # Azimuth integral gain in 1/s. Usage: use sparingly to remove steady offset.
   azimuth_ki_s_inv: 0.05
-  lateral_memory_limit_rad: 0.08726646259971647
+  # Lateral integral-memory limit in degrees. Usage: cap accumulated roll bias.
+  lateral_memory_limit_deg: 5
+  # Altitude-loop proportional gain in N·s/m. Usage: raise for firmer height correction.
   vertical_kp_n_s_m: 1.0
+  # Altitude-loop integral gain in N/m. Usage: use sparingly to remove steady height error.
   vertical_ki_n_m: 0.4
+  # Altitude-loop integral limit in N. Usage: cap accumulated thrust correction.
   vertical_integral_limit_n: 5.0
   # Sensor filtering, freshness, and command delivery.
+# ********************
+# SENSOR FILTERING AND FRESHNESS
+# ********************
+  # Barometer position filter gain. Usage: raise for faster but noisier altitude response.
   barometer_alpha: 0.35
+  # Barometer velocity filter gain. Usage: raise for faster but noisier vertical speed.
   barometer_beta: 0.05
+  # Vertical-filter warmup duration in s. Usage: allow estimates to settle before flight.
   vertical_warmup_s: 0.1
+  # Bearing filter time constant in s. Usage: raise to smooth noisier detections.
   bearing_filter_s: 0.15
+  # Maximum accepted image age in s. Usage: keep below control responsiveness needs.
   max_image_age_s: 0.1
+  # Maximum accepted attitude age in s. Usage: match attitude publication latency.
   max_attitude_age_s: 0.2
+  # Maximum accepted barometer age in s. Usage: match altitude publication latency.
   max_barometer_age_s: 0.2
+  # Attitude history duration in s. Usage: cover the maximum image age.
   attitude_history_s: 0.5
+  # Maximum image-to-attitude alignment gap in s. Usage: reject poorly synchronized frames.
   max_alignment_gap_s: 0.12
+  # Maximum control-loop gap in s. Usage: fault when control timing stalls.
   max_control_gap_s: 0.1
+  # Command validity horizon in s. Usage: cover transport and scheduling delay.
   command_validity_s: 0.05
   # Acquisition, recovery, and bounded visual association.
+# ********************
+# ACQUISITION AND RECOVERY
+# ********************
+  # Stable-observation dwell before tracking in s. Usage: raise to reject transient targets.
   acquisition_dwell_s: 0.1
+  # Maximum acquisition time in s. Usage: fault if no stable target appears.
   acquisition_timeout_s: 5.0
+  # Stable-observation dwell before reacquiring in s. Usage: raise to reject transient recovery.
   recovery_dwell_s: 0.1
+  # Maximum recovery time in s. Usage: fault if visual recovery does not complete.
   recovery_timeout_s: 1.0
+  # Sustained control-limit duration in s. Usage: recover before pushing an infeasible approach.
   limitation_timeout_s: 0.75
-  max_elevation_rad: 1.0471975511965976
-  max_azimuth_rad: 0.6108652381980153
-  max_los_deviation_rad: 0.20943951023931956
-  max_association_jump_rad: 0.20943951023931956
+# ********************
+# VISUAL ACCEPTANCE LIMITS
+# ********************
+  # Maximum target elevation from optical axis in degrees. Usage: reject implausible detections.
+  max_elevation_deg: 60
+  # Maximum target azimuth from optical axis in degrees. Usage: reject implausible detections.
+  max_azimuth_deg: 35
+  # Maximum deviation from acquired LOS in degrees. Usage: prevent target swaps.
+  max_los_deviation_deg: 12
+  # Maximum frame-to-frame bearing jump in degrees. Usage: reject association jumps.
+  max_association_jump_deg: 12
   # Time-to-contact qualification.
+# ********************
+# TIME TO CONTACT
+# ********************
+  # TTC estimation window in s. Usage: trade responsiveness against noise.
   ttc_window_s: 0.5
+  # Minimum TTC history span in s. Usage: require enough motion before qualification.
   ttc_min_span_s: 0.2
+  # Minimum bbox growth in pixels. Usage: reject non-closing targets.
   ttc_min_growth_px: 1.0
+  # Maximum relative TTC fit residual. Usage: reject noisy scale growth.
   ttc_max_relative_residual: 0.15
+  # TTC threshold to enter TTC control in s. Usage: begin closing control below this time.
   ttc_enter_s: 8.0
+  # TTC threshold to leave TTC control in s. Usage: keep above enter threshold for hysteresis.
   ttc_exit_s: 10.0
+  # Qualified TTC dwell in s. Usage: reject brief TTC estimates.
   ttc_dwell_s: 0.3
+  # TTC threshold for terminal stage in s. Usage: reserve final close-in behavior.
   terminal_ttc_s: 0.8
+  # Extra TTC feasibility margin in s. Usage: make descent feasibility more conservative.
   ttc_time_margin_s: 0.1
+  # Height margin for descent feasibility in m. Usage: keep landing clearance.
   feasibility_height_margin_m: 0.25
   # Commit holds the last tracking command when this much of the image is covered at an edge.
+# ********************
+# CLOSE-TARGET COMMIT
+# ********************
+  # Frame coverage fraction for commit. Usage: enter command hold when a close target reaches an edge.
   commit_coverage_fraction: 0.4
+  # Edge proximity margin in pixels. Usage: increase to commit before literal edge contact.
   commit_edge_margin_px: 0.0
