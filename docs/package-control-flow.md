@@ -176,7 +176,7 @@ from los_tracking import (
     TargetObservation,
 )
 
-config = NavigatorConfig.from_json("examples/bullet_profile.json")
+config = NavigatorConfig.from_yaml("examples/bullet_profile.yaml")
 navigator = LosNavigator(config)
 
 # One illustrative tick. Subsequent calls supply later control times and
@@ -530,4 +530,4 @@ These are current `Tuning` defaults; explicit profiles may override them.
 | TTC fit window / minimum span / minimum samples | 0.5 s / 0.2 s / 8. |
 
 Configuration: [config.py](../src/los_tracking/config.py) and
-[Bullet profile](../examples/bullet_profile.json).
+[Bullet profile](../examples/bullet_profile.yaml).

@@ -1,8 +1,9 @@
 """Explicit platform configuration and simulation-only tuning defaults."""
 from dataclasses import dataclass, field, fields
-import json
 from math import pi, tan
 from pathlib import Path
+
+import yaml
 
 from .types import finite, quaternion
 
@@ -113,12 +114,14 @@ class Tuning:
     terminal_ttc_s: float = 0.8
     ttc_time_margin_s: float = 0.1
     feasibility_height_margin_m: float = 0.25
+    commit_coverage_fraction: float = 0.4
+    commit_edge_margin_px: float = 0.0
 
     def __post_init__(self):
         nonnegative = {"elevation_kp_m_s_rad", "elevation_kd_m_rad", "elevation_ki_m_s2_rad",
                        "azimuth_kp", "azimuth_kd_s", "azimuth_ki_s_inv", "vertical_kp_n_s_m",
                        "vertical_ki_n_m", "yaw_gain_s_inv", "ttc_time_margin_s",
-                       "feasibility_height_margin_m"}
+                       "feasibility_height_margin_m", "commit_edge_margin_px"}
         for item in fields(self):
             value = finite(getattr(self, item.name), item.name)
             if value < 0 or (value == 0 and item.name not in nonnegative):
@@ -130,6 +133,8 @@ class Tuning:
             raise ValueError("approach pitch exceeds an angular limit")
         if not 0 < self.barometer_alpha <= 1 or not 0 < self.barometer_beta <= 1:
             raise ValueError("barometer filter gains must lie in (0,1]")
+        if not 0 < self.commit_coverage_fraction <= 1:
+            raise ValueError("commit coverage fraction must lie in (0,1]")
         if self.max_image_age_s > self.attitude_history_s:
             raise ValueError("attitude history must cover maximum image age")
         if self.max_alignment_gap_s > self.attitude_history_s:
@@ -154,10 +159,13 @@ class NavigatorConfig:
             raise ValueError("typed camera, vehicle and tuning configuration required")
         finite(self.target_altitude_m, "target_altitude_m")
     @classmethod
-    def from_json(cls, path: str | Path):
+    def from_yaml(cls, path: str | Path):
         """Load an explicit profile; unknown fields and malformed data are ValueErrors."""
         try:
-            data = json.loads(Path(path).read_text())
+            data = yaml.safe_load(Path(path).read_text())
+        except (OSError, UnicodeError, yaml.YAMLError) as exc:
+            raise ValueError("invalid navigator profile") from exc
+        try:
             if not isinstance(data, dict) or set(data) - {"camera", "vehicle", "target_altitude_m", "tuning"}:
                 raise ValueError("invalid or unknown navigator profile fields")
             return cls(camera=CameraCalibration(**data["camera"]),

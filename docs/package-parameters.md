@@ -312,7 +312,7 @@ Reviewed against:
 
 - [Package control flow](package-control-flow.md)
 - [Configuration and validation](../src/los_tracking/config.py)
-- [Bullet profile](../examples/bullet_profile.json)
+- [Bullet profile](../examples/bullet_profile.yaml)
 - [Controller and physical demand](../src/los_tracking/control.py)
 - [Vertical, bearing and TTC estimators](../src/los_tracking/estimation.py)
 - [Navigation lifecycle and supervision](../src/los_tracking/navigator.py)

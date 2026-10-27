@@ -14,7 +14,7 @@ from los_tracking import (
 )
 
 # Run from the los_tracking package directory.
-config = NavigatorConfig.from_json(Path("examples/bullet_profile.json"))
+config = NavigatorConfig.from_yaml(Path("examples/bullet_profile.yaml"))
 navigator = LosNavigator(config)
 results = []
 for i in range(36):

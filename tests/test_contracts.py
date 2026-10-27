@@ -1,9 +1,9 @@
-from dataclasses import FrozenInstanceError, replace
-import json
+from dataclasses import FrozenInstanceError, fields, replace
 from math import pi
 from pathlib import Path
 
 import pytest
+import yaml
 from los_tracking import (AttitudeSample, BarometerSample, CameraCalibration, LosNavigator,
                           NavigationInput, NavigatorConfig, ControlDemand, TargetObservation,
                           Tuning, VehicleConfig)
@@ -44,17 +44,29 @@ def test_config_is_frozen_and_cannot_be_hot_replaced(config):
 
 
 def test_profile_rejects_unknown_fields_and_missing_platform_values(tmp_path):
-    p = tmp_path / "profile.json"
-    for data in [{}, {"unexpected": 1}, [], None]:
-        p.write_text(json.dumps(data))
+    p = tmp_path / "profile.yaml"
+    for data in ["{}", "unexpected: 1", "[]", "null", "camera: ["]:
+        p.write_text(data)
         with pytest.raises(ValueError):
-            NavigatorConfig.from_json(p)
+            NavigatorConfig.from_yaml(p)
 
 
 def test_simulation_profile_matches_actual_rc_platform(config):
-    profile = NavigatorConfig.from_json(Path(__file__).parents[1] / "examples/bullet_profile.json")
+    profile = NavigatorConfig.from_yaml(Path(__file__).parents[1] / "examples/bullet_profile.yaml")
     assert profile == replace(config, tuning=replace(config.tuning, max_attitude_age_s=0.2,
                                                       max_alignment_gap_s=0.12))
+
+
+@pytest.mark.parametrize('profile', [
+    Path(__file__).parents[1] / 'examples/bullet_profile.yaml',
+    Path(__file__).parents[2] / 'config/bullet_profile.yaml',
+    Path(__file__).parents[2] / 'config/betaflight_los.yaml',
+    Path(__file__).parents[2] / 'bullet_app/configs/betaflight_hover_profile.yaml',
+])
+def test_shipped_profiles_are_complete_yaml(profile):
+    data = yaml.safe_load(profile.read_text())
+    assert set(data['tuning']) == {item.name for item in fields(Tuning)}
+    NavigatorConfig.from_yaml(profile)
 
 
 def test_oversized_integer_is_reported_as_value_error():

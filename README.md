@@ -20,7 +20,7 @@ from los_tracking import (
     NavigatorConfig, TargetObservation,
 )
 
-config = NavigatorConfig.from_json("examples/bullet_profile.json")
+config = NavigatorConfig.from_yaml("examples/bullet_profile.yaml")
 navigator = LosNavigator(config)
 
 # Repeated on the application's control tick; values are supplied by its adapters.
@@ -137,7 +137,7 @@ commands with an independent receiver watchdog. This library opens no transport.
 
 ## Configuration and starting profile
 
-`examples/bullet_profile.json` contains every tuning value for reproducibility.
+`examples/bullet_profile.yaml` contains every tuning value for reproducibility.
 Platform fields are explicit: intrinsics and mount, mass, maximum thrust,
 and target altitude in the same barometric datum. Barometric altitude is not AGL.
 The profile uses a 1 kg vehicle and 33.953391 N maximum thrust from the bundled

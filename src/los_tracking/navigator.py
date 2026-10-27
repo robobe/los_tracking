@@ -4,7 +4,7 @@ from math import hypot, isfinite
 from .config import NavigatorConfig
 from .control import LosControl
 from .estimation import BearingEstimator, TtcEstimator, VerticalEstimator, descent_feasible
-from .geometry import AttitudeHistory, combined_tilt, euler, world_bearing, wrap
+from .geometry import AttitudeHistory, box_edges, combined_tilt, euler, world_bearing, wrap
 from .types import Diagnostics, NavigationInput, NavigationResult, State, TrackStage, finite
 
 
@@ -55,6 +55,7 @@ class LosNavigator:
         self._candidate_reference = None
         self._candidate_count = 0
         self._ttc_entry_at = self._limited_at = None
+        self._commit_command = None
         self._descent_feasible = None
         self._input_rejection = ""
         self._reason = "disabled"
@@ -209,6 +210,26 @@ class LosNavigator:
         self._reason = "tracking"
         self._limited_at = None
 
+    def _commit_eligible(self, now):
+        sample = self._pending_target
+        if (self.state not in (State.TRACK, State.RECOVER)
+                or self.state == State.RECOVER and self._reason != "persistent_limitation"
+                or self._commit_command is None or sample is None or sample.bbox is None):
+            return False
+        if now - sample.timestamp_s > self.config.tuning.max_image_age_s + TIME_EPSILON:
+            return False
+        x, y, width, height = sample.bbox
+        camera, tuning = self.config.camera, self.config.tuning
+        coverage = width * height / (camera.width_px * camera.height_px)
+        margins, _ = box_edges(sample.bbox, camera)
+        return coverage >= tuning.commit_coverage_fraction and min(margins) <= tuning.commit_edge_margin_px
+
+    def _commit(self):
+        self.state = State.COMMIT
+        self._reason = "close_target_commit"
+        self._pending_target = None
+        self._clear_candidate()
+
     def _stage_and_feasibility(self, now, altitude, vz):
         t = self.config.tuning
         tau, _ = self._ttc.at(now)
@@ -273,7 +294,7 @@ class LosNavigator:
                 self._vertical.push(inputs.barometer)
             except ArithmeticError:
                 self._fault("vertical_numeric_failure")
-        if self._accept("target", inputs.target):
+        if self.state != State.COMMIT and self._accept("target", inputs.target):
             self._pending_target = inputs.target
         if self.state == State.FAULT:
             return self._result(now)
@@ -302,19 +323,25 @@ class LosNavigator:
         if self._heading is None:
             self._heading = euler(attitude.orientation_xyzw)[2]
             self._hold_altitude = altitude
-        self._process_target(now)
-        if self._last_visual_time is None or now - self._last_visual_time > t.max_image_age_s + TIME_EPSILON:
-            self._reject_visual("stale_image" if self._visual_usable else self._vision_reason)
-        elif (command_horizon_s > 0 and self._visual_usable
-              and self._last_visual_time + t.max_image_age_s - now <= command_horizon_s + TIME_EPSILON):
-            # Recover before an image-limited command can expire between caller ticks.
-            self._reject_visual("image_deadline")
+        if self._commit_eligible(now):
+            self._commit()
+        if self.state != State.COMMIT:
+            self._process_target(now)
+            if self._last_visual_time is None or now - self._last_visual_time > t.max_image_age_s + TIME_EPSILON:
+                self._reject_visual("stale_image" if self._visual_usable else self._vision_reason)
+            elif (command_horizon_s > 0 and self._visual_usable
+                  and self._last_visual_time + t.max_image_age_s - now <= command_horizon_s + TIME_EPSILON):
+                # Recover before an image-limited command can expire between caller ticks.
+                self._reject_visual("image_deadline")
         measured_roll, measured_pitch, _ = euler(attitude.orientation_xyzw)
         over_tilt = combined_tilt(measured_roll, measured_pitch) > t.combined_tilt_limit_rad + TIME_EPSILON
         if over_tilt:
-            self._recover(now, altitude, "measured_over_tilt")
-            self._clear_candidate()
-            self._visual_usable = False
+            if self.state == State.COMMIT:
+                self._fault("measured_over_tilt")
+            else:
+                self._recover(now, altitude, "measured_over_tilt")
+                self._clear_candidate()
+                self._visual_usable = False
         elif self.state == State.TRACK and not self._visual_usable:
             self._recover(now, altitude, self._vision_reason)
         elif self.state in (State.ACQUIRE, State.RECOVER) and self._visual_usable:
@@ -328,6 +355,9 @@ class LosNavigator:
             self._fault("recovery_timeout")
         if self.state == State.FAULT:
             return self._result(now)
+
+        if self.state == State.COMMIT:
+            return self._result(now, self._commit_command)
 
         errors = None
         approach_scale = 0.0
@@ -360,6 +390,8 @@ class LosNavigator:
         except ArithmeticError:
             self._fault("control_numeric_failure")
             return self._result(now)
+        if self.state == State.TRACK:
+            self._commit_command = command
         return self._result(now, command)
 
     def _result(self, now, command=None):

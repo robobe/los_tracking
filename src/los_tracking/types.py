@@ -97,6 +97,7 @@ class State(StrEnum):
     DISABLED = "disabled"
     ACQUIRE = "acquire"
     TRACK = "track"
+    COMMIT = "commit"
     RECOVER = "recover"
     FAULT = "fault"
 

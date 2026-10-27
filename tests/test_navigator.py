@@ -47,6 +47,44 @@ def test_target_loss_recovers_then_reacquires_original_reference(config):
     assert (result.diagnostics.reference_elevation_rad, result.diagnostics.reference_azimuth_rad) == reference
 
 
+def test_close_target_commit_latches_the_last_tracking_command(config):
+    nav = LosNavigator(config)
+    acquire(nav)
+    # Large but fully inside the frame remains normal tracking.
+    result = nav.update(samples(35, bbox=(120, 80, 400, 320)), now_s=.35, enabled=True)
+    assert result.state == State.TRACK
+    committed = nav.update(samples(36, bbox=(0, 0, 640, 480)), now_s=.36, enabled=True)
+    assert committed.state == State.COMMIT and committed.reason == 'close_target_commit'
+    assert committed.command == result.command
+    lost = nav.update(samples(37, camera=False), now_s=.37, enabled=True)
+    assert lost.state == State.COMMIT and lost.command == committed.command
+    assert lost.valid_until_s > lost.generated_at_s
+
+
+def test_close_target_commit_does_not_override_other_recovery(config):
+    nav = LosNavigator(config)
+    acquire(nav)
+    nav.update(samples(35, bbox=None), now_s=.35, enabled=True)
+    result = nav.update(samples(36, bbox=(0, 0, 640, 480)), now_s=.36, enabled=True)
+    assert result.state == State.RECOVER
+
+
+def test_close_target_commit_keeps_sensor_and_tilt_safety_faults(config):
+    nav = LosNavigator(config)
+    acquire(nav)
+    nav.update(samples(35, bbox=(0, 0, 640, 480)), now_s=.35, enabled=True)
+    for index in range(36, 42):
+        result = nav.update(replace(samples(index, camera=False), attitude=None), now_s=index / 100, enabled=True)
+    assert result.state == State.FAULT and result.reason == 'attitude_stale'
+
+
+def test_close_target_commit_uses_configured_edge_margin(config):
+    nav = LosNavigator(replace(config, tuning=replace(config.tuning, commit_edge_margin_px=10)))
+    acquire(nav)
+    result = nav.update(samples(35, bbox=(10, 100, 620, 200)), now_s=.35, enabled=True)
+    assert result.state == State.COMMIT
+
+
 def test_missing_image_is_not_immediate_no_target_and_recovery_has_deadline(config):
     nav = LosNavigator(config)
     acquire(nav)
@@ -247,15 +285,20 @@ def test_ttc_stages_and_ttc_loss_keep_same_track_and_original_memory(config):
 def test_ttc_infeasibility_moderates_pitch_then_recovers(config):
     nav = LosNavigator(replace(config, target_altitude_m=-100))
     saw_infeasibility = False
+    last_tracking_command = None
     for i in range(180):
         now = i / 100
         size = 40 / (3 - now)
         bbox = (320 - size / 2, 290 - size / 2, size, size)
         result = nav.update(samples(i, bbox=bbox), now_s=now, enabled=True)
         saw_infeasibility |= result.diagnostics.descent_feasible is False
+        if result.state == State.TRACK:
+            last_tracking_command = result.command
         if result.state == State.RECOVER:
             break
     assert saw_infeasibility and result.reason == "persistent_limitation"
+    committed = nav.update(samples(i + 1, bbox=(0, 0, 640, 480)), now_s=(i + 1) / 100, enabled=True)
+    assert committed.state == State.COMMIT and committed.command == last_tracking_command
 
 
 def test_finite_but_overflowing_vertical_measurement_fails_closed(config):

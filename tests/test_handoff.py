@@ -6,11 +6,11 @@ from los_tracking import (AltitudeHeadingHold, AttitudeSample, BarometerSample, 
                           NavigationInput, NavigatorConfig, State)
 
 
-PROFILE = Path(__file__).resolve().parents[1] / 'examples/bullet_profile.json'
+PROFILE = Path(__file__).resolve().parents[1] / 'examples/bullet_profile.yaml'
 
 
 def warm_hold():
-    config = NavigatorConfig.from_json(PROFILE)
+    config = NavigatorConfig.from_yaml(PROFILE)
     hold = AltitudeHeadingHold(config)
     for i in range(31):
         now = 1 + i * .01
