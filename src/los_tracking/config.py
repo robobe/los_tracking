@@ -102,6 +102,8 @@ class Tuning:
     vertical_kp_n_s_m: float = 1.0
     vertical_ki_n_m: float = 0.4
     vertical_integral_limit_n: float = 5.0
+    betaflight_takeoff_pwm: int = 0
+    betaflight_hover_pwm: int = 0
     barometer_alpha: float = 0.35
     barometer_beta: float = 0.05
     vertical_warmup_s: float = 0.1
@@ -139,7 +141,8 @@ class Tuning:
         nonnegative = {"elevation_kp_m_s_rad", "elevation_kd_m_rad", "elevation_ki_m_s2_rad",
                        "azimuth_kp", "azimuth_kd_s", "azimuth_ki_s_inv", "vertical_kp_n_s_m",
                        "vertical_ki_n_m", "yaw_gain_s_inv", "ttc_time_margin_s",
-                       "feasibility_height_margin_m", "commit_edge_margin_px"}
+                       "feasibility_height_margin_m", "commit_edge_margin_px",
+                       "betaflight_takeoff_pwm", "betaflight_hover_pwm"}
         for item in fields(self):
             value = finite(getattr(self, item.name), item.name)
             if value < 0 or (value == 0 and item.name not in nonnegative):
@@ -163,6 +166,10 @@ class Tuning:
             raise ValueError("TTC thresholds must satisfy terminal < enter < exit")
         if self.acquisition_dwell_s >= self.acquisition_timeout_s or self.recovery_dwell_s >= self.recovery_timeout_s:
             raise ValueError("dwell must be shorter than timeout")
+        for name in ("betaflight_takeoff_pwm", "betaflight_hover_pwm"):
+            value = getattr(self, name)
+            if type(value) is not int or value != 0 and not 1050 <= value <= 2000:
+                raise ValueError(f"{name} must be 0 or an integer in [1050, 2000]")
 
 
 @dataclass(frozen=True)
