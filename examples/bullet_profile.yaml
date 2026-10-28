@@ -87,6 +87,10 @@ tuning:
   vertical_ki_n_m: 0.4
   # Altitude-loop integral limit in N. Usage: cap accumulated thrust correction.
   vertical_integral_limit_n: 5.0
+  # Betaflight-only takeoff spool PWM; 0 disables calibration for non-Betaflight profiles.
+  betaflight_takeoff_pwm: 0
+  # Betaflight-only level-hover PWM; 0 disables calibration for non-Betaflight profiles.
+  betaflight_hover_pwm: 0
   # Sensor filtering, freshness, and command delivery.
 # ********************
 # SENSOR FILTERING AND FRESHNESS
