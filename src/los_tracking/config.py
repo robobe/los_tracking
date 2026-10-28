@@ -86,6 +86,7 @@ class Tuning:
     pitch_slew_rad_s: float = 5 * DEG_TO_RAD
     yaw_gain_s_inv: float = 4.0
     yaw_rate_limit_rad_s: float = 2.0
+    yaw_search_timeout_s: float = 60.0
     max_descent_m_s: float = 5.5
     max_climb_m_s: float = 3.0
     vertical_slew_m_s2: float = 1.0
