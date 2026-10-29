@@ -115,7 +115,7 @@ class AltitudeHeadingHold:
         """Aligned attitude at exposure time; never extrapolate."""
         return self.history.at(finite(timestamp_s, 'timestamp_s'))
 
-    def command(self, *, now_s, target_altitude_m, yaw_rate_rad_s=None):
+    def command(self, *, now_s, target_altitude_m, yaw_rate_rad_s=None, vertical_reference_m_s=None):
         if yaw_rate_rad_s is not None:
             finite(yaw_rate_rad_s, 'yaw_rate_rad_s')
             if abs(yaw_rate_rad_s) > self.config.tuning.yaw_rate_limit_rad_s:
@@ -127,8 +127,11 @@ class AltitudeHeadingHold:
             raise ValueError('hold control gap')
         self.last_now = now_s
         altitude, vz = self.estimate(now_s)
+        climb_limit = (self.config.tuning.max_climb_m_s
+                       if vertical_reference_m_s is not None else self.max_climb_m_s)
         return self.control.step(dt, altitude, vz, self.attitude.orientation_xyzw, self.heading_rad,
-                                 hold_altitude=target_altitude_m, max_climb_m_s=self.max_climb_m_s, yaw_rate_rad_s=yaw_rate_rad_s)
+                                 hold_altitude=target_altitude_m, max_climb_m_s=climb_limit,
+                                 vertical_reference_m_s=vertical_reference_m_s, yaw_rate_rad_s=yaw_rate_rad_s)
 
     def handoff(self, *, now_s, target_altitude_m):
         if not self.ready(now_s):

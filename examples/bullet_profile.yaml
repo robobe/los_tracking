@@ -69,6 +69,14 @@ tuning:
   vertical_slew_m_s2: 1.0
   # Vertical braking slew in m/s². Usage: raise to arrest excessive downward velocity faster.
   vertical_brake_slew_m_s2: 4.0
+  # Takeoff altitude proportional gain in 1/s. Usage: legacy takeoff response.
+  takeoff_kp_s_inv: 1.0
+  # Takeoff altitude integral gain in 1/s². Usage: legacy takeoff response.
+  takeoff_ki_s2_inv: 0.0
+  # Takeoff vertical-speed command ceiling in m/s. Usage: legacy takeoff limit.
+  takeoff_max_climb_m_s: 1.0
+  # Takeoff vertical-reference slew in m/s². Usage: legacy takeoff ramp.
+  takeoff_vertical_slew_m_s2: 1.0
   # Altitude-hold gain in 1/s. Usage: raise for firmer height hold.
   hold_altitude_gain_s_inv: 1.0
   # LOS elevation proportional gain in (m/s)/degree. Usage: increase descent response to vertical error.

@@ -49,7 +49,8 @@ class LosControl:
         self.vertical_memory = self.lateral_memory = 0.0
 
     def step(self, dt, altitude, vz, attitude, heading, *, errors=None, rates=(0.0, 0.0),
-             hold_altitude=None, approach_scale=1.0, freeze_integral=False, max_climb_m_s=None, yaw_rate_rad_s=None):
+             hold_altitude=None, approach_scale=1.0, freeze_integral=False, max_climb_m_s=None,
+             vertical_reference_m_s=None, yaw_rate_rad_s=None):
         t, vehicle = self.tuning, self.config.vehicle
         if yaw_rate_rad_s is not None:
             finite(yaw_rate_rad_s, 'yaw_rate_rad_s')
@@ -57,7 +58,12 @@ class LosControl:
                 raise ValueError('yaw rate exceeds configured limit')
         tracking = errors is not None
         old_z, old_r = self.vertical_memory, self.lateral_memory
-        if tracking:
+        if vertical_reference_m_s is not None:
+            finite(vertical_reference_m_s, 'vertical_reference_m_s')
+            candidate_z, candidate_r = old_z, old_r
+            base_z = 0.0
+            base_r = 0.0
+        elif tracking:
             candidate_z = clamp(old_z - t.elevation_ki_m_s2_rad * errors[0] * dt,
                                 -t.vertical_memory_limit_m_s, t.vertical_memory_limit_m_s)
             candidate_r = clamp(old_r - t.azimuth_ki_s_inv * errors[1] * dt,
@@ -69,13 +75,16 @@ class LosControl:
             base_z = t.hold_altitude_gain_s_inv * (hold_altitude - altitude)
             base_r = 0.0
 
-        requested_z = base_z + (candidate_z if tracking else 0.0)
+        requested_z = vertical_reference_m_s if vertical_reference_m_s is not None else base_z + (candidate_z if tracking else 0.0)
         limited_z = clamp(requested_z, -t.max_descent_m_s, t.max_climb_m_s if max_climb_m_s is None else max_climb_m_s)
-        vertical_slew = (t.vertical_brake_slew_m_s2
-                         if limited_z > self.vz_reference else t.vertical_slew_m_s2)
-        new_z = self.vz_reference + clamp(limited_z - self.vz_reference,
-                                        -t.vertical_slew_m_s2 * dt, vertical_slew * dt)
-        if tracking and (candidate_z - old_z) * (requested_z - new_z) > 0:
+        if vertical_reference_m_s is not None:
+            new_z = limited_z
+        else:
+            vertical_slew = (t.vertical_brake_slew_m_s2
+                             if limited_z > self.vz_reference else t.vertical_slew_m_s2)
+            new_z = self.vz_reference + clamp(limited_z - self.vz_reference,
+                                            -t.vertical_slew_m_s2 * dt, vertical_slew * dt)
+        if vertical_reference_m_s is None and tracking and (candidate_z - old_z) * (requested_z - new_z) > 0:
             candidate_z = old_z
             requested_z = base_z + candidate_z
             limited_z = clamp(requested_z, -t.max_descent_m_s, t.max_climb_m_s if max_climb_m_s is None else max_climb_m_s)

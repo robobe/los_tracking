@@ -93,6 +93,10 @@ class Tuning:
     max_climb_m_s: float = 3.0
     vertical_slew_m_s2: float = 1.0
     vertical_brake_slew_m_s2: float = 4.0
+    takeoff_kp_s_inv: float = 1.0
+    takeoff_ki_s2_inv: float = 0.0
+    takeoff_max_climb_m_s: float = 1.0
+    takeoff_vertical_slew_m_s2: float = 1.0
     hold_altitude_gain_s_inv: float = 1.0
     # Upstream vertical LOS gains used degrees; convert them to radians here.
     elevation_kp_m_s_rad: float = 0.7 / DEG_TO_RAD
@@ -147,6 +151,7 @@ class Tuning:
                        "vertical_ki_n_m", "yaw_gain_s_inv", "ttc_time_margin_s",
                        "feasibility_height_margin_m", "commit_edge_margin_px",
                        "track_elevation_rad",
+                       "takeoff_kp_s_inv", "takeoff_ki_s2_inv",
                        "betaflight_takeoff_pwm", "betaflight_hover_pwm"}
         for item in fields(self):
             value = finite(getattr(self, item.name), item.name)
@@ -158,6 +163,8 @@ class Tuning:
             raise ValueError("angular limits must be strictly below pi/2")
         if self.approach_pitch_rad > self.pitch_limit_rad or self.approach_pitch_rad > self.combined_tilt_limit_rad:
             raise ValueError("approach pitch exceeds an angular limit")
+        if self.takeoff_max_climb_m_s > self.max_climb_m_s:
+            raise ValueError("takeoff climb exceeds maximum climb")
         if not 0 < self.barometer_alpha <= 1 or not 0 < self.barometer_beta <= 1:
             raise ValueError("barometer filter gains must lie in (0,1]")
         if not 0 < self.commit_coverage_fraction <= 1:

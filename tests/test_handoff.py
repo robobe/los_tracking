@@ -72,3 +72,9 @@ def test_public_heading_yaw_override_validation_and_filter_continuity():
     with pytest.raises(ValueError):
         hold.set_heading(float('nan'))
     assert hold.heading_rad == 0.
+
+
+def test_vertical_reference_override_can_use_profile_climb_limit():
+    config, hold, _, _ = warm_hold()
+    hold.command(now_s=1.31, target_altitude_m=20., vertical_reference_m_s=2.5)
+    assert hold.control.last_diagnostics['vertical_reference_m_s'] == pytest.approx(2.5)
