@@ -143,6 +143,13 @@ def test_recovery_reseeds_for_continuous_handoff(config):
                zip(control.angles, previous[0], (config.tuning.roll_slew_rad_s, config.tuning.pitch_slew_rad_s)))
 
 
+def test_downward_velocity_uses_braking_slew_and_extra_thrust(config):
+    control = LosControl(config)
+    command = control.step(0.01, 10, -5, IDENTITY, 0, errors=(-0.1, 0))
+    assert control.vz_reference == pytest.approx(config.tuning.vertical_brake_slew_m_s2 * 0.01)
+    assert command.thrust_n > config.vehicle.mass_kg * config.vehicle.gravity_m_s2
+
+
 def test_known_translation_los_rates_survive_simultaneous_camera_rotation(config):
     estimator = BearingEstimator(0.03)
     for i in range(200):

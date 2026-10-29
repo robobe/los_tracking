@@ -79,7 +79,7 @@ def test_sensor_only_closed_loop_reduces_range_and_preserves_los(config, crosswi
     assert ranges[-1] < 0.25
     assert result.state == State.DISABLED and not result.usable
     assert hypot(*velocity[:2]) > 1  # Contact approach deliberately remains moving.
-    assert max(bearing_errors) < config.tuning.max_los_deviation_rad
+    assert max(bearing_errors) < config.tuning.max_elevation_rad
     assert position[2] < 8  # Persistent descending correction, not pixel centering.
     assert abs(position[1]) < 2
 

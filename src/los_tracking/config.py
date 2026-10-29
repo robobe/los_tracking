@@ -19,6 +19,7 @@ YAML_DEGREE_FIELDS = {
     "roll_slew_deg_s": ("roll_slew_rad_s", DEG_TO_RAD),
     "pitch_slew_deg_s": ("pitch_slew_rad_s", DEG_TO_RAD),
     "yaw_rate_limit_deg_s": ("yaw_rate_limit_rad_s", DEG_TO_RAD),
+    "track_elevation_deg": ("track_elevation_rad", DEG_TO_RAD),
     "elevation_kp_m_s_deg": ("elevation_kp_m_s_rad", 1 / DEG_TO_RAD),
     "elevation_kd_m_deg": ("elevation_kd_m_rad", 1 / DEG_TO_RAD),
     "elevation_ki_m_s2_deg": ("elevation_ki_m_s2_rad", 1 / DEG_TO_RAD),
@@ -87,9 +88,11 @@ class Tuning:
     yaw_gain_s_inv: float = 4.0
     yaw_rate_limit_rad_s: float = 2.0
     yaw_search_timeout_s: float = 60.0
+    track_elevation_rad: float = 0.0
     max_descent_m_s: float = 5.5
     max_climb_m_s: float = 3.0
     vertical_slew_m_s2: float = 1.0
+    vertical_brake_slew_m_s2: float = 4.0
     hold_altitude_gain_s_inv: float = 1.0
     # Upstream vertical LOS gains used degrees; convert them to radians here.
     elevation_kp_m_s_rad: float = 0.7 / DEG_TO_RAD
@@ -143,13 +146,15 @@ class Tuning:
                        "azimuth_kp", "azimuth_kd_s", "azimuth_ki_s_inv", "vertical_kp_n_s_m",
                        "vertical_ki_n_m", "yaw_gain_s_inv", "ttc_time_margin_s",
                        "feasibility_height_margin_m", "commit_edge_margin_px",
+                       "track_elevation_rad",
                        "betaflight_takeoff_pwm", "betaflight_hover_pwm"}
         for item in fields(self):
             value = finite(getattr(self, item.name), item.name)
             if value < 0 or (value == 0 and item.name not in nonnegative):
                 raise ValueError(f"{item.name} must be {'nonnegative' if item.name in nonnegative else 'positive'}")
         if any(getattr(self, name) >= pi / 2 for name in
-               ("roll_limit_rad", "pitch_limit_rad", "combined_tilt_limit_rad", "max_elevation_rad", "max_azimuth_rad")):
+               ("roll_limit_rad", "pitch_limit_rad", "combined_tilt_limit_rad", "track_elevation_rad",
+                "max_elevation_rad", "max_azimuth_rad")):
             raise ValueError("angular limits must be strictly below pi/2")
         if self.approach_pitch_rad > self.pitch_limit_rad or self.approach_pitch_rad > self.combined_tilt_limit_rad:
             raise ValueError("approach pitch exceeds an angular limit")

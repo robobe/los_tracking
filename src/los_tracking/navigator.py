@@ -45,7 +45,7 @@ class LosNavigator:
         self._control = LosControl(self.config)
         self._pending_target = None
         self._processed_target = None
-        self._heading = self._reference = self._hold_altitude = None
+        self._heading = self._reference = self._track_reference = self._hold_altitude = None
         self._sensors_were_ready = False
         self._visual_usable = False
         self._vision_reason = "not_observed"
@@ -204,7 +204,8 @@ class LosNavigator:
     def _track(self, now):
         if self._reference is None:
             self._reference = self._candidate_reference
-        errors = tuple(wrap(a - b) for a, b in zip(self._bearing.at(now), self._reference))
+        self._track_reference = (self.config.tuning.track_elevation_rad, self._reference[1])
+        errors = tuple(wrap(a - b) for a, b in zip(self._bearing.at(now), self._track_reference))
         self._control.begin_track(errors, self._bearing.rates)
         self.state = State.TRACK
         self._reason = "tracking"
@@ -381,7 +382,7 @@ class LosNavigator:
                 approach_scale = 1.0
                 self._reason = "tracking"
             if self.state == State.TRACK:
-                errors = tuple(wrap(a - b) for a, b in zip(self._bearing.at(now), self._reference))
+                errors = tuple(wrap(a - b) for a, b in zip(self._bearing.at(now), self._track_reference))
         try:
             command = self._control.step(dt, altitude, vz, attitude.orientation_xyzw, self._heading,
                                          errors=errors, rates=self._bearing.rates,
@@ -416,8 +417,8 @@ class LosNavigator:
             azimuth_rate_rad_s=self._bearing.rates[1] if self._bearing.count >= 2 else None,
             bearing_valid=bearing_valid,
             rate_observable=self._bearing.count >= 2 and bearing_valid,
-            reference_elevation_rad=self._reference[0] if self._reference else None,
-            reference_azimuth_rad=self._reference[1] if self._reference else None,
+            reference_elevation_rad=self._track_reference[0] if self._track_reference else None,
+            reference_azimuth_rad=self._track_reference[1] if self._track_reference else None,
             altitude_m=vertical[0] if vertical[0] is not None and isfinite(vertical[0]) else None,
             vertical_speed_m_s=vertical[1] if vertical[1] is not None and isfinite(vertical[1]) else None, vertical_ready=self._vertical.ready,
             optical_ttc_s=tau, ttc_reason=ttc_reason, ttc_relative_residual=self._ttc.relative_residual,

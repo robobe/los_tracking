@@ -16,7 +16,7 @@ def test_acquisition_needs_vertical_warmup_and_new_visual_samples(config):
     result = acquire(nav, start=1)
     assert result.state == State.TRACK and result.usable
     assert result.diagnostics.rate_observable
-    assert result.diagnostics.reference_elevation_rad > 0
+    assert result.diagnostics.reference_elevation_rad == pytest.approx(config.tuning.track_elevation_rad)
     assert result.generated_at_s < result.valid_until_s <= result.generated_at_s + 0.05
     assert len(encode_demand(result.command, config).as_tuple()) == 4
 

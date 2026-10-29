@@ -71,14 +71,18 @@ class LosControl:
 
         requested_z = base_z + (candidate_z if tracking else 0.0)
         limited_z = clamp(requested_z, -t.max_descent_m_s, t.max_climb_m_s if max_climb_m_s is None else max_climb_m_s)
+        vertical_slew = (t.vertical_brake_slew_m_s2
+                         if limited_z > self.vz_reference else t.vertical_slew_m_s2)
         new_z = self.vz_reference + clamp(limited_z - self.vz_reference,
-                                        -t.vertical_slew_m_s2 * dt, t.vertical_slew_m_s2 * dt)
+                                        -t.vertical_slew_m_s2 * dt, vertical_slew * dt)
         if tracking and (candidate_z - old_z) * (requested_z - new_z) > 0:
             candidate_z = old_z
             requested_z = base_z + candidate_z
             limited_z = clamp(requested_z, -t.max_descent_m_s, t.max_climb_m_s if max_climb_m_s is None else max_climb_m_s)
+            vertical_slew = (t.vertical_brake_slew_m_s2
+                             if limited_z > self.vz_reference else t.vertical_slew_m_s2)
             new_z = self.vz_reference + clamp(limited_z - self.vz_reference,
-                                            -t.vertical_slew_m_s2 * dt, t.vertical_slew_m_s2 * dt)
+                                            -t.vertical_slew_m_s2 * dt, vertical_slew * dt)
 
         requested_roll = base_r + (candidate_r if tracking else 0.0)
         if not isfinite(requested_roll) or not isfinite(requested_z):

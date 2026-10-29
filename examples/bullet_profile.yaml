@@ -55,6 +55,8 @@ tuning:
   yaw_rate_limit_deg_s: 114.591559026
   # Maximum yaw-search duration in simulation seconds. Usage: allow a full scan and centering delays.
   yaw_search_timeout_s: 60.0
+  # Target elevation reference in degrees. Usage: 0 keeps the target on the image Y centerline.
+  track_elevation_deg: 0
   # Vertical motion and controller gains.
 # ********************
 # VERTICAL MOTION AND CONTROL
@@ -65,6 +67,8 @@ tuning:
   max_climb_m_s: 3.0
   # Vertical-speed reference slew in m/s². Usage: lower for gentler thrust changes.
   vertical_slew_m_s2: 1.0
+  # Vertical braking slew in m/s². Usage: raise to arrest excessive downward velocity faster.
+  vertical_brake_slew_m_s2: 4.0
   # Altitude-hold gain in 1/s. Usage: raise for firmer height hold.
   hold_altitude_gain_s_inv: 1.0
   # LOS elevation proportional gain in (m/s)/degree. Usage: increase descent response to vertical error.
