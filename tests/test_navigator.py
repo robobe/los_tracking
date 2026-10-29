@@ -301,6 +301,24 @@ def test_ttc_infeasibility_moderates_pitch_then_recovers(config):
     assert committed.state == State.COMMIT and committed.command == last_tracking_command
 
 
+def test_visual_recovery_keeps_optical_correction_active(config):
+    nav = LosNavigator(config)
+    acquire(nav, bbox=(320, 220, 20, 20))
+    tracking = nav.update(samples(35, bbox=(320, 220, 20, 20)), now_s=.35, enabled=True)
+    assert tracking.state == State.TRACK
+    tracking = nav.update(samples(36, bbox=(380, 220, 20, 20)), now_s=.36, enabled=True)
+    assert tracking.state == State.TRACK and tracking.command.roll_rad > 0
+    clipped = (620, 220, 20, 20)
+    recovery = nav.update(samples(37, bbox=clipped), now_s=.37, enabled=True)
+    assert recovery.state == State.RECOVER and recovery.usable
+    assert recovery.command.roll_rad > 0
+    for index in range(38, 150):
+        recovery = nav.update(samples(index, bbox=clipped), now_s=index / 100, enabled=True)
+        if recovery.state == State.FAULT:
+            break
+    assert recovery.state == State.FAULT and recovery.reason == 'recovery_timeout'
+
+
 def test_finite_but_overflowing_vertical_measurement_fails_closed(config):
     nav = LosNavigator(config)
     acquire(nav)

@@ -211,6 +211,16 @@ class LosNavigator:
         self._reason = "tracking"
         self._limited_at = None
 
+    def _recovery_errors(self, now):
+        """Return bounded extrapolated LOS errors while visual recovery runs."""
+        if (self._reason == "measured_over_tilt" or self._track_reference is None
+                or self._bearing.time is None or self._recovery_at is None):
+            return None
+        if now - self._bearing.time > self.config.tuning.recovery_timeout_s + TIME_EPSILON:
+            return None
+        angles = self._bearing.at(now)
+        return tuple(wrap(a - b) for a, b in zip(angles, self._track_reference))
+
     def _commit_eligible(self, now):
         sample = self._pending_target
         if (self.state not in (State.TRACK, State.RECOVER)
@@ -383,6 +393,8 @@ class LosNavigator:
                 self._reason = "tracking"
             if self.state == State.TRACK:
                 errors = tuple(wrap(a - b) for a, b in zip(self._bearing.at(now), self._track_reference))
+        elif self.state == State.RECOVER:
+            errors = self._recovery_errors(now)
         try:
             command = self._control.step(dt, altitude, vz, attitude.orientation_xyzw, self._heading,
                                          errors=errors, rates=self._bearing.rates,
