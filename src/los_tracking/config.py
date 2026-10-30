@@ -77,6 +77,48 @@ class VehicleConfig:
 
 
 @dataclass(frozen=True)
+class ControlConnection:
+    """Betaflight MSP connection details, independent of MAVLink telemetry."""
+
+    transport: str = "tcp"
+    host: str = "127.0.0.1"
+    port: int = 5761
+    path: str | None = None
+    baud_rate: int = 115200
+
+    def __post_init__(self):
+        if self.transport not in ("tcp", "serial"):
+            raise ValueError("control.connection.transport must be 'tcp' or 'serial'")
+        if not isinstance(self.host, str) or not self.host.strip():
+            raise ValueError("control.connection.host must be a nonblank string")
+        if type(self.port) is not int or not 1 <= self.port <= 65535:
+            raise ValueError("control.connection.port must be an integer in [1, 65535]")
+        if self.path is not None and (not isinstance(self.path, str) or not self.path.strip()):
+            raise ValueError("control.connection.path must be a nonblank string when provided")
+        if type(self.baud_rate) is not int or self.baud_rate <= 0:
+            raise ValueError("control.connection.baud_rate must be a positive integer")
+        if self.transport == "serial" and self.path is None:
+            raise ValueError("control.connection.path is required for serial transport")
+
+
+@dataclass(frozen=True)
+class ControlConfig:
+    """Select the flight backend and its Betaflight MSP deployment target."""
+
+    backend: str = "internal"
+    target: str = "sitl"
+    connection: ControlConnection = field(default_factory=ControlConnection)
+
+    def __post_init__(self):
+        if self.backend not in ("internal", "betaflight"):
+            raise ValueError("control.backend must be 'internal' or 'betaflight'")
+        if self.target not in ("sitl", "hardware"):
+            raise ValueError("control.target must be 'sitl' or 'hardware'")
+        if not isinstance(self.connection, ControlConnection):
+            raise ValueError("control.connection must be ControlConnection")
+
+
+@dataclass(frozen=True)
 class Tuning:
     # All defaults are simulation starting points, not validated hardware gains.
     approach_pitch_rad: float = 7 * DEG_TO_RAD
@@ -191,10 +233,12 @@ class NavigatorConfig:
     vehicle: VehicleConfig
     target_altitude_m: float
     tuning: Tuning = field(default_factory=Tuning)
+    control: ControlConfig = field(default_factory=ControlConfig)
 
     def __post_init__(self):
-        if not isinstance(self.camera, CameraCalibration) or not isinstance(self.vehicle, VehicleConfig) or not isinstance(self.tuning, Tuning):
-            raise ValueError("typed camera, vehicle and tuning configuration required")
+        if (not isinstance(self.camera, CameraCalibration) or not isinstance(self.vehicle, VehicleConfig)
+                or not isinstance(self.tuning, Tuning) or not isinstance(self.control, ControlConfig)):
+            raise ValueError("typed camera, vehicle, tuning and control configuration required")
         finite(self.target_altitude_m, "target_altitude_m")
     @classmethod
     def from_yaml(cls, path: str | Path):
@@ -204,7 +248,7 @@ class NavigatorConfig:
         except (OSError, UnicodeError, yaml.YAMLError) as exc:
             raise ValueError("invalid navigator profile") from exc
         try:
-            if not isinstance(data, dict) or set(data) - {"camera", "vehicle", "target_altitude_m", "tuning"}:
+            if not isinstance(data, dict) or set(data) - {"camera", "vehicle", "target_altitude_m", "tuning", "control"}:
                 raise ValueError("invalid or unknown navigator profile fields")
             tuning = dict(data.get("tuning", {}))
             legacy = set(tuning) & {runtime for runtime, _ in YAML_DEGREE_FIELDS.values()}
@@ -213,9 +257,20 @@ class NavigatorConfig:
             for yaml_name, (runtime_name, scale) in YAML_DEGREE_FIELDS.items():
                 if yaml_name in tuning:
                     tuning[runtime_name] = finite(tuning.pop(yaml_name), yaml_name) * scale
+            control_data = data.get("control", {})
+            if not isinstance(control_data, dict) or set(control_data) - {"backend", "target", "connection"}:
+                raise ValueError("invalid or unknown control fields")
+            connection_data = control_data.get("connection", {})
+            if not isinstance(connection_data, dict) or set(connection_data) - {"transport", "host", "port", "path", "baud_rate"}:
+                raise ValueError("invalid or unknown control.connection fields")
+            control = ControlConfig(
+                backend=control_data.get("backend", "internal"),
+                target=control_data.get("target", "sitl"),
+                connection=ControlConnection(**connection_data),
+            )
             return cls(camera=CameraCalibration(**data["camera"]),
                        vehicle=VehicleConfig(**data["vehicle"]),
                        target_altitude_m=data["target_altitude_m"],
-                       tuning=Tuning(**tuning))
+                       tuning=Tuning(**tuning), control=control)
         except (TypeError, KeyError) as exc:
             raise ValueError("invalid navigator profile") from exc

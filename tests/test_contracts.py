@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-from los_tracking import (AttitudeSample, BarometerSample, CameraCalibration, LosNavigator,
-                          NavigationInput, NavigatorConfig, ControlDemand, TargetObservation,
-                          Tuning, VehicleConfig)
+from los_tracking import (AttitudeSample, BarometerSample, CameraCalibration, ControlConnection,
+                          ControlConfig, LosNavigator, NavigationInput, NavigatorConfig,
+                          ControlDemand, TargetObservation, Tuning, VehicleConfig)
 from los_tracking.config import YAML_DEGREE_FIELDS
 
 
@@ -95,6 +95,63 @@ tuning:
     tuning = NavigatorConfig.from_yaml(path).tuning
     assert tuning.roll_limit_rad == pytest.approx(radians(20))
     assert tuning.elevation_kp_m_s_rad == pytest.approx(.7 / (pi / 180))
+
+
+def test_yaml_parses_betaflight_tcp_connection(tmp_path):
+    path = tmp_path / 'profile.yaml'
+    path.write_text('''
+camera: {width_px: 640, height_px: 480, fx_px: 320, fy_px: 320, cx_px: 320, cy_px: 240}
+vehicle: {mass_kg: 1, max_thrust_n: 33.953391}
+target_altitude_m: 0
+control:
+  backend: betaflight
+  target: sitl
+  connection: {transport: tcp, host: 192.168.1.20, port: 5761}
+''')
+
+    control = NavigatorConfig.from_yaml(path).control
+
+    assert control == ControlConfig(
+        backend='betaflight', target='sitl',
+        connection=ControlConnection(transport='tcp', host='192.168.1.20', port=5761))
+
+
+def test_yaml_parses_betaflight_serial_connection(tmp_path):
+    path = tmp_path / 'profile.yaml'
+    path.write_text('''
+camera: {width_px: 640, height_px: 480, fx_px: 320, fy_px: 320, cx_px: 320, cy_px: 240}
+vehicle: {mass_kg: 1, max_thrust_n: 33.953391}
+target_altitude_m: 0
+control:
+  backend: betaflight
+  target: hardware
+  connection: {transport: serial, path: /dev/ttyUSB0, baud_rate: 921600}
+''')
+
+    connection = NavigatorConfig.from_yaml(path).control.connection
+
+    assert connection.transport == 'serial'
+    assert connection.path == '/dev/ttyUSB0'
+    assert connection.baud_rate == 921600
+
+
+@pytest.mark.parametrize('connection', [
+    {'transport': 'serial'},
+    {'transport': 'tcp', 'port': 0},
+    {'transport': 'tcp', 'host': ''},
+    {'transport': 'usb'},
+])
+def test_yaml_rejects_invalid_control_connection(tmp_path, connection):
+    path = tmp_path / 'profile.yaml'
+    path.write_text(yaml.safe_dump({
+        'camera': {'width_px': 640, 'height_px': 480, 'fx_px': 320, 'fy_px': 320, 'cx_px': 320, 'cy_px': 240},
+        'vehicle': {'mass_kg': 1, 'max_thrust_n': 33.953391},
+        'target_altitude_m': 0,
+        'control': {'backend': 'betaflight', 'connection': connection},
+    }))
+
+    with pytest.raises(ValueError):
+        NavigatorConfig.from_yaml(path)
 
 
 def test_yaml_rejects_legacy_radian_keys(tmp_path):

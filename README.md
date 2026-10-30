@@ -144,6 +144,21 @@ The profile uses a 1 kg vehicle and 33.953391 N maximum thrust from the bundled
 Bullet racer, ideal 640×480 / 90° horizontal FOV, and flat target datum 0 m.
 These are simulation examples, not inferred calibration or hardware recommendations.
 
+Mission profiles may also include a Betaflight control connection. Internal
+profiles do not open MSP; Betaflight SITL defaults to TCP at `127.0.0.1:5761`,
+while hardware profiles can select a serial device and baud rate. MAVLink
+telemetry is configured by the application separately.
+
+```yaml
+control:
+  backend: betaflight
+  target: hardware
+  connection:
+    transport: serial
+    path: /dev/ttyUSB0
+    baud_rate: 115200
+```
+
 Defaults start at 7° approach pitch, 15° roll and 30° total tilt; roll/pitch slew
 15°/s and 5°/s; climb/descent bounds 3/5.5 m/s; vertical-reference slew 1 m/s².
 Upstream vertical LOS gains expressed per degree are converted to radians.
