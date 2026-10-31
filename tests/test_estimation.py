@@ -35,7 +35,7 @@ def test_optical_ttc_predicts_with_age_then_expires():
     estimator = TtcEstimator(Tuning())
     for i in range(30):
         now = i / 30
-        size = 40 / (5 - now)
+        size = 80 / (5 - now)
         estimator.push(now, (100, 100, size, size))
     tau, reason = estimator.at(now)
     assert reason == "qualified"
@@ -43,6 +43,27 @@ def test_optical_ttc_predicts_with_age_then_expires():
     assert estimator.at(now + 0.05)[0] == pytest.approx(tau - 0.05, abs=1e-9)
     assert estimator.at(now + 0.101) == (None, "stale")
     assert estimator.relative_residual < 1e-12
+
+
+def test_ttc_waits_for_stable_growth_dwell():
+    estimator = TtcEstimator(Tuning())
+    saw_dwell = False
+    for i in range(45):
+        now = i / 30
+        size = 80 / (5 - now)
+        estimator.push(now, (100, 100, size, size))
+        if estimator.reason == "qualification_dwell":
+            saw_dwell = True
+            assert estimator.at(now) == (None, "qualification_dwell")
+    assert saw_dwell
+    assert estimator.at(now)[1] == "qualified"
+
+
+def test_ttc_rejects_small_noisy_target_even_with_apparent_growth():
+    estimator = TtcEstimator(Tuning())
+    for i, size in enumerate((10, 11, 10, 12, 11, 13, 12, 13, 12, 14)):
+        estimator.push(i / 30, (100, 100, size, size))
+    assert estimator.at(1.0) == (None, "target_too_small")
 
 
 @pytest.mark.parametrize("case", ["constant", "receding", "tiny_growth", "noisy"])

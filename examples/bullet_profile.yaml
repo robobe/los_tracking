@@ -164,6 +164,8 @@ tuning:
   ttc_window_s: 0.5
   # Minimum TTC history span in s. Usage: require enough motion before qualification.
   ttc_min_span_s: 0.2
+  # Minimum bbox area in pixels² for TTC. Usage: reject tiny noisy detections; default 256.
+  ttc_min_area_px2: 256
   # Minimum bbox growth in pixels. Usage: reject non-closing targets.
   ttc_min_growth_px: 1.0
   # Maximum relative TTC fit residual. Usage: reject noisy scale growth.

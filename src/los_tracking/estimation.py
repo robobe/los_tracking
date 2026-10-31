@@ -1,12 +1,13 @@
 """Measurement-driven filters; repeated control ticks never insert measurements."""
 from collections import deque
-from math import exp, isfinite, sqrt
+from math import ceil, exp, isfinite, sqrt
 
 from .geometry import clamp, wrap
 
 
 TTC_HISTORY_CAPACITY = 256
 TTC_MIN_SAMPLES = 8
+TTC_MIN_POSITIVE_GROWTH_FRACTION = 0.6
 VERTICAL_MIN_SAMPLES = 3
 EPSILON = 1e-12
 
@@ -83,12 +84,14 @@ class TtcEstimator:
         self.reason = "insufficient_history"
         self.relative_residual = None
         self.fit = None
+        self.qualified_since = None
 
     def invalidate(self, reason):
         self.reason = reason
         self.samples.clear()
         self.fit = None
         self.relative_residual = None
+        self.qualified_since = None
 
     def push(self, timestamp, bbox):
         size = sqrt(bbox[2]) * sqrt(bbox[3])
@@ -99,37 +102,56 @@ class TtcEstimator:
         self.relative_residual = None
         self.reason = "insufficient_history"
         if len(self.samples) < TTC_MIN_SAMPLES:
+            self.qualified_since = None
             return
         span = timestamp - self.samples[0][0]
         if span < self.tuning.ttc_min_span_s:
+            self.qualified_since = None
             return
         times = [t - timestamp for t, _ in self.samples]
-        inverse_sizes = [1 / s for _, s in self.samples]
+        sizes = [s for _, s in self.samples]
+        if sizes[-1] * sizes[-1] < self.tuning.ttc_min_area_px2:
+            self.reason = "target_too_small"
+            self.qualified_since = None
+            return
+        positive_steps = sum(new > old + EPSILON for old, new in zip(sizes, sizes[1:]))
+        if positive_steps < ceil(TTC_MIN_POSITIVE_GROWTH_FRACTION * (len(sizes) - 1)):
+            self.reason = "non_monotonic_growth"
+            self.qualified_since = None
+            return
+        inverse_sizes = [1 / s for s in sizes]
         if not all(isfinite(v) for v in inverse_sizes):
             self.reason = "unresolved_growth"
+            self.qualified_since = None
             return
         mean_t = sum(times) / len(times)
         mean_y = sum(inverse_sizes) / len(inverse_sizes)
         variance = sum((t - mean_t) ** 2 for t in times)
         if variance <= EPSILON or mean_y <= 0:
             self.reason = "unresolved_growth"
+            self.qualified_since = None
             return
         slope = sum((t - mean_t) * (y - mean_y) for t, y in zip(times, inverse_sizes)) / variance
         intercept = mean_y - slope * mean_t
         if slope >= -EPSILON or intercept <= 0:
             self.reason = "not_closing"
+            self.qualified_since = None
             return
         growth = self.samples[-1][1] - self.samples[0][1]
         if growth < self.tuning.ttc_min_growth_px:
             self.reason = "unresolved_growth"
+            self.qualified_since = None
             return
         residual = sqrt(sum((y - intercept - slope * t) ** 2 for t, y in zip(times, inverse_sizes)) / len(times))
         self.relative_residual = residual / mean_y
         if self.relative_residual > self.tuning.ttc_max_relative_residual:
             self.reason = "noisy_growth"
+            self.qualified_since = None
             return
         self.fit = (timestamp, intercept, slope)
-        self.reason = "qualified"
+        if self.qualified_since is None:
+            self.qualified_since = timestamp
+        self.reason = "qualified" if timestamp - self.qualified_since >= self.tuning.ttc_dwell_s - EPSILON else "qualification_dwell"
 
     def at(self, now):
         if self.fit is None:
@@ -142,6 +164,8 @@ class TtcEstimator:
         tau = -remaining_depth_proxy / slope
         if not isfinite(tau) or tau <= 0:
             return None, "model_elapsed"
+        if self.qualified_since is None or timestamp - self.qualified_since < self.tuning.ttc_dwell_s - EPSILON:
+            return None, "qualification_dwell"
         return tau, "qualified"
 
 

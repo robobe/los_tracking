@@ -176,6 +176,7 @@ class Tuning:
     max_association_jump_rad: float = 12 * DEG_TO_RAD
     ttc_window_s: float = 0.5
     ttc_min_span_s: float = 0.2
+    ttc_min_area_px2: float = 256.0
     ttc_min_growth_px: float = 1.0
     ttc_max_relative_residual: float = 0.15
     ttc_enter_s: float = 8.0
